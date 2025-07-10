@@ -7,6 +7,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+////////////////////// ENUMS /////////////////////////////////
+
+enum Gender {
+  male
+  female
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+  terminated
+}
+
+///////////////////// ENUMS /////////////////////////////////
+
 model Department {
   id          Int      @id @default(autoincrement())
   name        String   @unique @db.VarChar(100)
@@ -16,7 +31,55 @@ model Department {
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
 
+  Designation Designation[]
+  Employee    Employee[]
+
   @@index([name], name: "idx_name")
+}
+
+model Designation {
+  id            Int      @id @default(autoincrement())
+  title         String   @unique @db.VarChar(100)
+  level         Int
+  description   String?  @db.Text
+  department_id Int?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  is_active     Boolean  @default(true)
+  is_deleted    Boolean  @default(false)
+
+  department Department? @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  Employee   Employee[]
+
+  @@index([title], name: "idx_title")
+}
+
+model Employee {
+  id              Int            @id @default(autoincrement())
+  employee_code   String         @unique @db.VarChar(20)
+  full_name       String         @db.VarChar(100)
+  email           String         @unique @db.VarChar(100)
+  phone           String?        @unique @db.VarChar(20)
+  cnic            String?        @unique @db.VarChar(20)
+  gender          Gender?
+  dob             DateTime?
+  join_date       DateTime?
+  leave_date      DateTime?
+  department_id   Int
+  designation_id  Int
+  profile_picture String?        @db.VarChar(255)
+  address         String?        @db.Text
+  status          EmployeeStatus @default(active)
+  is_active       Boolean        @default(true)
+  is_deleted      Boolean        @default(false)
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+
+  department  Department  @relation(fields: [department_id], references: [id], onDelete: Restrict)
+  designation Designation @relation(fields: [designation_id], references: [id], onDelete: Restrict)
+
+  @@index([employee_code], name: "idx_employee_code")
+  @@index([email], name: "idx_email")
 }
 
 // PUT LOGS TABLES HERE UNDER THIS COMMENT
