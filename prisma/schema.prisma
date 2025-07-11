@@ -62,9 +62,9 @@ model Employee {
   phone           String?        @unique @db.VarChar(20)
   cnic            String?        @unique @db.VarChar(20)
   gender          Gender?
-  dob             DateTime?
-  join_date       DateTime?
-  leave_date      DateTime?
+  dob             DateTime?      @db.Date
+  join_date       DateTime?      @db.Date
+  leave_date      DateTime?      @db.Date
   department_id   Int
   designation_id  Int
   profile_picture String?        @db.VarChar(255)
@@ -80,6 +80,36 @@ model Employee {
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
+}
+
+model OfficeLocation {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique @db.VarChar(100)
+  latitude      String   @unique
+  longitude     String   @unique
+  radius_meters Int      @db.Int
+  address       String?  @db.Text
+  is_active     Boolean  @default(true)
+  is_deleted    Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([latitude, longitude], name: "idx_longitude_latitude")
+}
+
+model Shift {
+  id                            Int      @id @default(autoincrement())
+  name                          String   @unique @db.VarChar(50)
+  start_time                    DateTime @db.Time
+  end_time                      DateTime @db.Time
+  grace_minutes                 Int      @default(10)
+  half_day_hours                Decimal  @default(4.0) @db.Decimal(5, 2)
+  early_leave_threshold_minutes Int      @default(30)
+  break_duration_minutes        Int      @default(0)
+  is_active                     Boolean  @default(true)
+  is_deleted                    Boolean  @default(false)
+  created_at                    DateTime @default(now())
+  updated_at                    DateTime @updatedAt
 }
 
 // PUT LOGS TABLES HERE UNDER THIS COMMENT
