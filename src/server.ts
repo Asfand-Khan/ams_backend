@@ -3,9 +3,8 @@ import dotenv from 'dotenv';
 import logger from './config/logger';
 import prisma from './config/db';
 import appSetup from './app';
-import path from 'path';
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config();
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
