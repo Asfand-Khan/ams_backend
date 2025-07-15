@@ -1,14 +1,18 @@
 import express, { Application } from "express";
-import dotenv from "dotenv";
+// import dotenv from "dotenv";
 import logger from "./config/logger";
 import prisma from "./config/db";
 import appSetup from "./app";
 import path from "path";
 
-// dotenv.config({
-//   path: path.resolve(__dirname, "../.env"),
-// });
+console.log('Current Working Directory:', process.cwd());
+console.log('JWT_SECRET before dotenv:', process.env.JWT_SECRET);
+
+import dotenv from "dotenv";
 dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+console.log('JWT_SECRET after dotenv:', process.env.JWT_SECRET);
+
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
 
