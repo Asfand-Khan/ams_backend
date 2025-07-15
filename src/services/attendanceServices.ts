@@ -2,8 +2,6 @@ import dayjs from "dayjs";
 import prisma from "../config/db";
 import { CheckIn } from "../validations/attendanceValidations";
 
-type WorkStatus = "early_leave" | "half_day" | "early_go" | "on_time" | "overtime";
-
 export const getEmployeeShift = async (emp_id: number) => {
   try {
     const employeeShift =
