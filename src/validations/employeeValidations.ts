@@ -10,10 +10,25 @@ export const statusEnum = z.enum(["active", "inactive", "terminated"], {
   invalid_type_error: "Status must be 'active', 'inactive', or 'terminated'",
 });
 
+export const empTypeEnum = z.enum(
+  ["employee", "manager", "admin", "hr", "lead"],
+  {
+    required_error: "Employee type is required",
+    invalid_type_error:
+      "Employee type must be 'employee', 'manager', admin, hr or 'lead'",
+  }
+);
+
 export const employeeSchema = z.object({
   employee_code: z
     .string({ required_error: "Employee code is required" })
     .length(4, "Employee code must be at exactly 4 characters length"),
+
+  username: z
+    .string({ required_error: "Username is required" })
+    .min(3, "Username must be at least 3 characters")
+    .max(100, "Username must be at most 100 characters")
+    .toLowerCase(),
 
   full_name: z
     .string({ required_error: "Full name is required" })
@@ -27,11 +42,15 @@ export const employeeSchema = z.object({
     .max(100, "Email must be at most 100 characters")
     .toLowerCase(),
 
+  emp_type: empTypeEnum.default("employee"),
+
   phone: z
     .string()
     .startsWith("03", "Phone number must start with '03'")
-    .length(11, "Phone number must be at exactly 11 characters i.e: 03XXXXXXXXXX")
-    .optional()
+    .length(
+      11,
+      "Phone number must be at exactly 11 characters i.e: 03XXXXXXXXXX"
+    )
     .or(z.literal("").transform(() => undefined)),
 
   cnic: z
@@ -41,7 +60,7 @@ export const employeeSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
 
-  gender: genderEnum.optional(),
+  gender: genderEnum,
 
   dob: z
     .string()
@@ -65,9 +84,16 @@ export const employeeSchema = z.object({
     .number({ required_error: "Designation ID is required" })
     .int("Designation ID must be an integer"),
 
+  shift_id: z
+    .number({ required_error: "Shift ID is required" })
+    .int("Shift ID must be an integer"),
+
+  team_id: z
+    .number({ required_error: "Team ID is required" })
+    .int("Team ID must be an integer"),
+
   profile_picture: z
     .string()
-    .url("Profile picture must be a valid URL")
     .max(255, "Profile picture URL is too long")
     .optional(),
 
@@ -85,6 +111,7 @@ export const employeeUpdateSchema = employeeSchema.extend({
     .number({ required_error: "Employee ID is required" })
     .int("Employee ID must be an integer"),
 });
+
 
 export type Employee = z.infer<typeof employeeSchema>;
 export type EmployeeUpdate = z.infer<typeof employeeUpdateSchema>;

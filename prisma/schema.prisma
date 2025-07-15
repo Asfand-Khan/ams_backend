@@ -9,6 +9,14 @@ datasource db {
 
 ////////////////////// ENUMS /////////////////////////////////
 
+enum UserType {
+  employee
+  manager
+  admin
+  hr
+  lead
+}
+
 enum Gender {
   male
   female
@@ -20,7 +28,107 @@ enum EmployeeStatus {
   terminated
 }
 
+enum CheckInStatus {
+  on_time
+  late
+  absent
+  manual
+}
+
+enum CheckOutStatus {
+  on_time
+  early_leave
+  early_go
+  overtime
+  manual
+  half_day
+}
+
+enum DayStatus {
+  present
+  absent
+  leave
+  weekend
+  holiday
+  manual_present
+  work_from_home
+}
+
+enum DeviceType {
+  android
+  ios
+  web
+  other
+}
+
+enum LeaveStatus {
+  pending
+  approved
+  rejected
+  cancelled
+}
+
 ///////////////////// ENUMS /////////////////////////////////
+
+model User {
+  id                   Int       @id @default(autoincrement())
+  username             String    @unique @db.VarChar(50)
+  email                String    @unique @db.VarChar(100)
+  password_hash        String    @db.VarChar(255)
+  type                 UserType
+  employee_id          Int?
+  last_login           DateTime?
+  password_reset_token String?   @db.VarChar(255)
+  otp_token            String?   @db.VarChar(6)
+  token_expiry         DateTime?
+  is_active            Boolean   @default(true)
+  is_deleted           Boolean   @default(false)
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  employee Employee? @relation(fields: [employee_id], references: [id])
+
+  @@index([email], name: "idx_email")
+  @@index([username], name: "idx_username")
+}
+
+model Employee {
+  id              Int            @id @default(autoincrement())
+  employee_code   String         @unique @db.VarChar(20)
+  full_name       String         @db.VarChar(100)
+  father_name     String?        @db.VarChar(100)
+  email           String         @unique @db.VarChar(100)
+  phone           String?        @unique @db.VarChar(20)
+  cnic            String?        @unique @db.VarChar(20)
+  gender          Gender?
+  dob             DateTime?      @db.Date
+  join_date       DateTime?      @db.Date
+  leave_date      DateTime?      @db.Date
+  department_id   Int
+  designation_id  Int
+  profile_picture String?        @default("default.png") @db.VarChar(255)
+  address         String?        @db.Text
+  status          EmployeeStatus @default(active)
+  is_active       Boolean        @default(true)
+  is_deleted      Boolean        @default(false)
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+
+  department           Department           @relation(fields: [department_id], references: [id], onDelete: Restrict)
+  designation          Designation          @relation(fields: [designation_id], references: [id], onDelete: Restrict)
+  EmployeeShift        EmployeeShift[]
+  ledTeams             Team[]               @relation("TeamLead")
+  TeamMember           TeamMember[]
+  User                 User[]
+  Attendance           Attendance[]
+  AttendanceVerifiedBy Attendance[]         @relation("VerifiedBy")
+  EmployeeLeaveQuota   EmployeeLeaveQuota[]
+  Leave                Leave[]
+  ApprovedLeaves       Leave[]              @relation("LeaveApprover")
+
+  @@index([employee_code], name: "idx_employee_code")
+  @@index([email], name: "idx_email")
+}
 
 model Department {
   id          Int      @id @default(autoincrement())
@@ -33,6 +141,7 @@ model Department {
 
   Designation Designation[]
   Employee    Employee[]
+  Team        Team[]
 
   @@index([name], name: "idx_name")
 }
@@ -54,45 +163,19 @@ model Designation {
   @@index([title], name: "idx_title")
 }
 
-model Employee {
-  id              Int            @id @default(autoincrement())
-  employee_code   String         @unique @db.VarChar(20)
-  full_name       String         @db.VarChar(100)
-  email           String         @unique @db.VarChar(100)
-  phone           String?        @unique @db.VarChar(20)
-  cnic            String?        @unique @db.VarChar(20)
-  gender          Gender?
-  dob             DateTime?      @db.Date
-  join_date       DateTime?      @db.Date
-  leave_date      DateTime?      @db.Date
-  department_id   Int
-  designation_id  Int
-  profile_picture String?        @db.VarChar(255)
-  address         String?        @db.Text
-  status          EmployeeStatus @default(active)
-  is_active       Boolean        @default(true)
-  is_deleted      Boolean        @default(false)
-  created_at      DateTime       @default(now())
-  updated_at      DateTime       @updatedAt
-
-  department  Department  @relation(fields: [department_id], references: [id], onDelete: Restrict)
-  designation Designation @relation(fields: [designation_id], references: [id], onDelete: Restrict)
-
-  @@index([employee_code], name: "idx_employee_code")
-  @@index([email], name: "idx_email")
-}
-
 model OfficeLocation {
-  id            Int      @id @default(autoincrement())
-  name          String   @unique @db.VarChar(100)
-  latitude      String   @unique
-  longitude     String   @unique
-  radius_meters Int      @db.Int
-  address       String?  @db.Text
-  is_active     Boolean  @default(true)
-  is_deleted    Boolean  @default(false)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                   Int          @id @default(autoincrement())
+  name                 String       @unique @db.VarChar(100)
+  latitude             String       @unique
+  longitude            String       @unique
+  radius_meters        Int          @db.Int
+  address              String?      @db.Text
+  is_active            Boolean      @default(true)
+  is_deleted           Boolean      @default(false)
+  created_at           DateTime     @default(now())
+  updated_at           DateTime     @updatedAt
+  check_in_attendance  Attendance[] @relation("CheckInOffice")
+  check_out_attendance Attendance[] @relation("CheckOutOffice")
 
   @@index([latitude, longitude], name: "idx_longitude_latitude")
 }
@@ -110,6 +193,169 @@ model Shift {
   is_deleted                    Boolean  @default(false)
   created_at                    DateTime @default(now())
   updated_at                    DateTime @updatedAt
+
+  EmployeeShift EmployeeShift[]
+}
+
+model EmployeeShift {
+  id             Int       @id @default(autoincrement())
+  employee_id    Int
+  shift_id       Int
+  effective_from DateTime  @db.Date
+  effective_to   DateTime? @db.Date
+  is_active      Boolean   @default(true)
+  is_deleted     Boolean   @default(false)
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  shift    Shift    @relation(fields: [shift_id], references: [id], onDelete: Restrict)
+
+  @@unique([employee_id, effective_from])
+  @@index([employee_id])
+  @@index([shift_id])
+}
+
+model Team {
+  id            Int      @id @default(autoincrement())
+  name          String   @unique @db.VarChar(100)
+  description   String?  @db.Text
+  team_lead_id  Int?
+  department_id Int?
+  is_active     Boolean  @default(true)
+  is_deleted    Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  // Relations
+  team_lead  Employee?    @relation("TeamLead", fields: [team_lead_id], references: [id], onDelete: SetNull)
+  department Department?  @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  members    TeamMember[]
+
+  @@index([name], name: "idx_team_name")
+}
+
+model TeamMember {
+  id           Int      @id @default(autoincrement())
+  team_id      Int
+  employee_id  Int
+  assigned_at  DateTime @default(now())
+  role_in_team String?  @db.VarChar(50)
+  is_active    Boolean  @default(true)
+  is_deleted   Boolean  @default(false)
+
+  team     Team     @relation(fields: [team_id], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+
+  @@unique([team_id, employee_id])
+}
+
+model Holiday {
+  id           Int      @id @default(autoincrement())
+  holiday_date DateTime @unique @db.Date
+  title        String   @db.VarChar(100)
+  description  String?  @db.Text
+  is_active    Boolean  @default(true)
+  is_deleted   Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  @@index([holiday_date], name: "idx_holiday_date")
+}
+
+model OfficeWifiNetwork {
+  id         Int      @id @default(autoincrement())
+  name       String   @unique @db.VarChar(100)
+  password   String?  @db.VarChar(255)
+  notes      String?  @db.Text
+  is_active  Boolean  @default(true)
+  is_deleted Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Attendance {
+  id                  Int             @id @default(autoincrement())
+  employee_id         Int
+  date                DateTime        @db.Date
+  check_in_time       DateTime?       @db.Time
+  check_in_office_id  Int?
+  check_out_time      DateTime?       @db.Time
+  check_out_device_id String?         @db.VarChar(100)
+  check_out_office_id Int?
+  work_hours          Decimal?        @db.Decimal(4, 2)
+  check_in_status     CheckInStatus?
+  check_out_status    CheckOutStatus?
+  day_status          DayStatus       @default(present)
+  verified_by         Int?
+  is_active           Boolean         @default(true)
+  is_deleted          Boolean         @default(false)
+  created_at          DateTime        @default(now())
+  updated_at          DateTime        @updatedAt
+
+  // Relations
+  employee       Employee        @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  checkInOffice  OfficeLocation? @relation("CheckInOffice", fields: [check_in_office_id], references: [id], onDelete: SetNull)
+  checkOutOffice OfficeLocation? @relation("CheckOutOffice", fields: [check_out_office_id], references: [id], onDelete: SetNull)
+  verifiedBy     Employee?       @relation("VerifiedBy", fields: [verified_by], references: [id], onDelete: SetNull)
+
+  @@unique([employee_id, date])
+  @@index([date], name: "idx_date")
+  @@index([employee_id, date], name: "idx_employee_date")
+}
+
+model EmployeeLeaveQuota {
+  id            Int      @id @default(autoincrement())
+  employee_id   Int
+  leave_type_id Int
+  year          Int
+  used_days     Int      @default(0)
+  is_active     Boolean  @default(true)
+  is_deleted    Boolean  @default(false)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  employee   Employee  @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  leave_type LeaveType @relation(fields: [leave_type_id], references: [id], onDelete: Cascade)
+
+  @@unique([employee_id, leave_type_id, year])
+}
+
+model Leave {
+  id            Int         @id @default(autoincrement())
+  employee_id   Int
+  leave_type_id Int
+  start_date    String
+  end_date      String
+  total_days    Int         @default(0)
+  reason        String?
+  status        LeaveStatus @default(pending)
+  applied_on    DateTime    @default(now())
+  approved_by   Int?
+  approved_on   DateTime?
+  remarks       String?
+  is_active     Boolean     @default(true)
+  is_deleted    Boolean     @default(false)
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+
+  employee   Employee  @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  leave_type LeaveType @relation(fields: [leave_type_id], references: [id], onDelete: Cascade)
+  approver   Employee? @relation("LeaveApprover", fields: [approved_by], references: [id])
+
+  @@index([employee_id, status])
+}
+
+model LeaveType {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @unique
+  total_quota        Int                  @default(0)
+  is_active          Boolean              @default(true)
+  is_deleted         Boolean              @default(false)
+  created_at         DateTime             @default(now())
+  updated_at         DateTime             @updatedAt
+  EmployeeLeaveQuota EmployeeLeaveQuota[]
+  Leave              Leave[]
 }
 
 // PUT LOGS TABLES HERE UNDER THIS COMMENT
