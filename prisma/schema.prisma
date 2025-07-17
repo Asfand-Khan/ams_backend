@@ -76,12 +76,60 @@ enum RequestType {
   missed_check_in
   missed_check_out
   wrong_time
-  other
+  both
 }
 
 enum RequestStatus {
   pending
   approved
+  rejected
+}
+
+enum AssetRequestType {
+  new
+  replacement
+  repair
+  return
+  issue
+  complaint
+}
+
+enum ComplaintCategory {
+  hardware
+  software
+  network
+  office_facility
+  other
+}
+
+enum AssetType {
+  laptop
+  desktop
+  mouse
+  keyboard
+  monitor
+  printer
+  scanner
+  hard_drive
+  charger
+  projector
+  software_installation
+  software_error
+  internet_issue
+  vpn_issue
+  email_issue
+  power_issue
+  desk
+  chair
+  AC
+  light
+  other
+}
+
+enum ComplaintStatus {
+  pending
+  in_progress
+  resolved
   rejected
 }
 
@@ -168,6 +216,10 @@ model Employee {
 
   // ✅ Attendance Correction Requests reviewed by this Employee
   attendanceCorrectionRequestsReviewed AttendanceCorrectionRequest[] @relation("EmployeeReviewedAttendanceCorrectionRequests")
+
+  /// ✅ Added Asset Complaint Relations
+  assetComplaintRequestsCreated   AssetComplaintRequest[] @relation("EmployeeAssetComplaintRequests")
+  assetComplaintRequestsReviewed  AssetComplaintRequest[] @relation("EmployeeReviewedAssetComplaintRequests")
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
@@ -415,38 +467,65 @@ model LeaveType {
 }
 
 model AttendanceCorrectionRequest {
-  id             Int    @id @default(autoincrement())
-  employeeId     Int
-  reviewedBy     Int?
-  attendanceDate String
+  id              Int         @id @default(autoincrement())
+  employee_id     Int
+  attendance_date String
+  request_type    RequestType
 
-  requestType RequestType
-
-  originalCheckIn   String?
-  originalCheckOut  String?
-  requestedCheckIn  String?
-  requestedCheckOut String?
+  original_check_in   String?
+  original_check_out  String?
+  requested_check_in  String?
+  requested_check_out String?
 
   reason String
   status RequestStatus @default(pending)
 
-  reviewedOn DateTime?
-  remarks    String?
+  reviewed_by Int?
+  reviewed_on DateTime?
+  remarks     String?
 
-  isActive  Boolean @default(true)
-  isDeleted Boolean @default(false)
+  is_active  Boolean @default(true)
+  is_deleted Boolean @default(false)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   // ✅ Raised By
-  employee Employee @relation("EmployeeAttendanceCorrectionRequests", fields: [employeeId], references: [id], onDelete: Cascade)
+  employee Employee @relation("EmployeeAttendanceCorrectionRequests", fields: [employee_id], references: [id], onDelete: Cascade)
 
   // ✅ Reviewed By
-  reviewer Employee? @relation("EmployeeReviewedAttendanceCorrectionRequests", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  reviewer Employee? @relation("EmployeeReviewedAttendanceCorrectionRequests", fields: [reviewed_by], references: [id], onDelete: SetNull)
 
-  @@index([employeeId, attendanceDate], name: "idx_employee_date")
+  @@index([employee_id, attendance_date], name: "idx_employee_date")
   @@index([status], name: "idx_status")
+}
+
+model AssetComplaintRequest {
+  id                   Int       @id @default(autoincrement())
+  employee_id          Int
+  reviewed_by          Int?
+
+  request_type         AssetRequestType
+  category             ComplaintCategory
+  asset_type           AssetType
+
+  reason               String
+  status               ComplaintStatus  @default(pending)
+  requested_at         DateTime         @default(now())
+  reviewed_at          DateTime?
+  resolution_remarks   String?
+
+  is_active            Boolean  @default(true)
+  is_deleted           Boolean  @default(false)
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  /// ✅ Relations
+  requested_by_employee   Employee  @relation("EmployeeAssetComplaintRequests", fields: [employee_id], references: [id], onDelete: Cascade)
+  reviewed_by_employee    Employee? @relation("EmployeeReviewedAssetComplaintRequests", fields: [reviewed_by], references: [id], onDelete: SetNull)
+
+  @@index([employee_id, status])
+  @@index([category, asset_type])
 }
 
 // PUT LOGS TABLES HERE UNDER THIS COMMENT

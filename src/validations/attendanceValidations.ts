@@ -6,8 +6,7 @@ const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
 const isValidPastOrTodayDate = (dateStr: string) => {
   const date = new Date(dateStr);
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return date.getTime() <= today.getTime();
+  return date.getDate() <= today.getDate();
 };
 
 export const checkInSchema = z.object({
