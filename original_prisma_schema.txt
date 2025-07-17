@@ -103,8 +103,7 @@ model User {
   created_at           DateTime  @default(now())
   updated_at           DateTime  @updatedAt
 
-  // ✅ Relation to the Employee this User is linked with
-  employee Employee? @relation("UserEmployee", fields: [employee_id], references: [id])
+  employee Employee? @relation(fields: [employee_id], references: [id])
 
   @@index([email], name: "idx_email")
   @@index([username], name: "idx_username")
@@ -132,42 +131,20 @@ model Employee {
   created_at      DateTime       @default(now())
   updated_at      DateTime       @updatedAt
 
-  // ✅ Relations
-  department  Department  @relation(fields: [department_id], references: [id], onDelete: Restrict)
-  designation Designation @relation(fields: [designation_id], references: [id], onDelete: Restrict)
+  department           Department           @relation(fields: [department_id], references: [id], onDelete: Restrict)
+  designation          Designation          @relation(fields: [designation_id], references: [id], onDelete: Restrict)
+  EmployeeShift        EmployeeShift[]
+  ledTeams             Team[]               @relation("TeamLead")
+  TeamMember           TeamMember[]
+  User                 User[]
+  Attendance           Attendance[]
+  AttendanceVerifiedBy Attendance[]         @relation("VerifiedBy")
+  EmployeeLeaveQuota   EmployeeLeaveQuota[]
+  Leave                Leave[]
+  ApprovedLeaves       Leave[]              @relation("LeaveApprover")
 
-  // ✅ Relation to User (one Employee may have many User accounts, usually it's one)
-  User User[] @relation("UserEmployee")
-
-  // ✅ Employee Shifts
-  EmployeeShift EmployeeShift[]
-
-  // ✅ Employee Attendance
-  Attendance Attendance[]
-
-  // ✅ Verified Attendance Records by this Employee (e.g., Manager verified)
-  AttendanceVerifiedBy Attendance[] @relation("AttendanceVerifiedBy")
-
-  // ✅ Lead of Teams
-  ledTeams Team[] @relation("EmployeeTeamLead")
-
-  // ✅ Member of Teams
-  TeamMember TeamMember[]
-
-  // ✅ Leave Quotas
-  EmployeeLeaveQuota EmployeeLeaveQuota[]
-
-  // ✅ Leaves applied by this Employee
-  Leave Leave[]
-
-  // ✅ Leaves approved by this Employee (Approver)
-  ApprovedLeaves Leave[] @relation("EmployeeLeaveApprover")
-
-  // ✅ Attendance Correction Requests raised by this Employee
-  attendanceCorrectionRequestsCreated AttendanceCorrectionRequest[] @relation("EmployeeAttendanceCorrectionRequests")
-
-  // ✅ Attendance Correction Requests reviewed by this Employee
-  attendanceCorrectionRequestsReviewed AttendanceCorrectionRequest[] @relation("EmployeeReviewedAttendanceCorrectionRequests")
+  attendanceCorrectionRequestsCreated  AttendanceCorrectionRequest[] @relation("EmployeeRequests") // ✅ Relation for requests created by the employee
+  attendanceCorrectionRequestsReviewed AttendanceCorrectionRequest[] @relation("ReviewedRequests") // ✅ Relation for requests reviewed by the employee
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
@@ -207,19 +184,18 @@ model Designation {
 }
 
 model OfficeLocation {
-  id            Int      @id @default(autoincrement())
-  name          String   @unique @db.VarChar(100)
-  latitude      String   @unique
-  longitude     String   @unique
-  radius_meters Int      @db.Int
-  address       String?  @db.Text
-  is_active     Boolean  @default(true)
-  is_deleted    Boolean  @default(false)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
-  check_in_attendance  Attendance[] @relation("AttendanceCheckInOffice")
-  check_out_attendance Attendance[] @relation("AttendanceCheckOutOffice")
+  id                   Int          @id @default(autoincrement())
+  name                 String       @unique @db.VarChar(100)
+  latitude             String       @unique
+  longitude            String       @unique
+  radius_meters        Int          @db.Int
+  address              String?      @db.Text
+  is_active            Boolean      @default(true)
+  is_deleted           Boolean      @default(false)
+  created_at           DateTime     @default(now())
+  updated_at           DateTime     @updatedAt
+  check_in_attendance  Attendance[] @relation("CheckInOffice")
+  check_out_attendance Attendance[] @relation("CheckOutOffice")
 
   @@index([latitude, longitude], name: "idx_longitude_latitude")
 }
@@ -271,14 +247,10 @@ model Team {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  // ✅ Team Lead is an Employee
-  team_lead Employee? @relation("EmployeeTeamLead", fields: [team_lead_id], references: [id], onDelete: SetNull)
-
-  // ✅ Department this team belongs to
-  department Department? @relation(fields: [department_id], references: [id], onDelete: SetNull)
-
-  // ✅ Members of this team
-  members TeamMember[]
+  // Relations
+  team_lead  Employee?    @relation("TeamLead", fields: [team_lead_id], references: [id], onDelete: SetNull)
+  department Department?  @relation(fields: [department_id], references: [id], onDelete: SetNull)
+  members    TeamMember[]
 
   @@index([name], name: "idx_team_name")
 }
@@ -341,17 +313,11 @@ model Attendance {
   created_at          DateTime        @default(now())
   updated_at          DateTime        @updatedAt
 
-  // ✅ Main Attendance Relation
-  employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
-
-  // ✅ Check-in Office
-  checkInOffice OfficeLocation? @relation("AttendanceCheckInOffice", fields: [check_in_office_id], references: [id], onDelete: SetNull)
-
-  // ✅ Check-out Office
-  checkOutOffice OfficeLocation? @relation("AttendanceCheckOutOffice", fields: [check_out_office_id], references: [id], onDelete: SetNull)
-
-  // ✅ Verified By
-  verifiedBy Employee? @relation("AttendanceVerifiedBy", fields: [verified_by], references: [id], onDelete: SetNull)
+  // Relations
+  employee       Employee        @relation(fields: [employee_id], references: [id], onDelete: Cascade)
+  checkInOffice  OfficeLocation? @relation("CheckInOffice", fields: [check_in_office_id], references: [id], onDelete: SetNull)
+  checkOutOffice OfficeLocation? @relation("CheckOutOffice", fields: [check_out_office_id], references: [id], onDelete: SetNull)
+  verifiedBy     Employee?       @relation("VerifiedBy", fields: [verified_by], references: [id], onDelete: SetNull)
 
   @@unique([employee_id, date])
   @@index([date], name: "idx_date")
@@ -378,9 +344,7 @@ model Leave {
 
   employee   Employee  @relation(fields: [employee_id], references: [id], onDelete: Cascade)
   leave_type LeaveType @relation(fields: [leave_type_id], references: [id], onDelete: Cascade)
-
-  // ✅ Approver of the Leave
-  approver Employee? @relation("EmployeeLeaveApprover", fields: [approved_by], references: [id])
+  approver   Employee? @relation("LeaveApprover", fields: [approved_by], references: [id])
 
   @@index([employee_id, status])
 }
@@ -439,11 +403,9 @@ model AttendanceCorrectionRequest {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // ✅ Raised By
-  employee Employee @relation("EmployeeAttendanceCorrectionRequests", fields: [employeeId], references: [id], onDelete: Cascade)
-
-  // ✅ Reviewed By
-  reviewer Employee? @relation("EmployeeReviewedAttendanceCorrectionRequests", fields: [reviewedBy], references: [id], onDelete: SetNull)
+  // ✅ Named relations matching Employee
+  employee Employee  @relation("EmployeeRequests", fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer Employee? @relation("ReviewedRequests", fields: [reviewedBy], references: [id], onDelete: SetNull)
 
   @@index([employeeId, attendanceDate], name: "idx_employee_date")
   @@index([status], name: "idx_status")

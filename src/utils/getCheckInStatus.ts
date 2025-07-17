@@ -1,26 +1,21 @@
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
+import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 
 dayjs.extend(utc);
+dayjs.extend(isSameOrBefore);
 
-export const getCheckInStatus = (params: {
-  check_in_datetime: string;
-  system_start_time: string;
-  grace_minutes: number;
-}): "on_time" | "late" => {
-  const { check_in_datetime, system_start_time, grace_minutes } = params;
+export const getCheckInStatus = (
+  check_in_time: string,
+  start_time: string,
+  grace_minutes: number
+): "on_time" | "late" => {
+  const today = dayjs().format("YYYY-MM-DD");
 
-  const checkInTime = dayjs.utc(check_in_datetime, "YYYY-MM-DD HH:mm:ss");
-  const shiftTimeUTC = dayjs.utc(system_start_time);
+  const checkInTime = dayjs.utc(`${today} ${check_in_time}`, "YYYY-MM-DD HH:mm:ss");
+  const shiftStartTime = dayjs.utc(`${today} ${start_time}`, "YYYY-MM-DD HH:mm:ss");
 
-  const adjustedShiftTime = dayjs.utc(
-    `${checkInTime.format("YYYY-MM-DD")} ${shiftTimeUTC.format("HH:mm:ss")}`,
-    "YYYY-MM-DD HH:mm:ss"
-  );
+  const graceLimit = shiftStartTime.add(grace_minutes, "minute");
 
-  const graceTime = adjustedShiftTime.add(grace_minutes, "minute");
-
-  return checkInTime.isBefore(graceTime) || checkInTime.isSame(graceTime)
-    ? "on_time"
-    : "late";
+  return checkInTime.isSameOrBefore(graceLimit) ? "on_time" : "late";
 };

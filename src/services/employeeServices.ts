@@ -1,7 +1,6 @@
 import prisma from "../config/db";
 import { generateRandomHex } from "../utils/generateRandomHex";
 import { Employee, EmployeeUpdate } from "../validations/employeeValidations";
-import crypto from "crypto";
 
 export const getAllEmployees = async () => {
   try {
@@ -50,6 +49,8 @@ export const createEmployee = async (employee: Employee) => {
     const result = await prisma.$transaction(async (tx) => {
       const newEmployee = await tx.employee.create({ data });
 
+      const leavesTypes = await prisma.leaveType.findMany();
+
       const user = await tx.user.create({
         data: {
           username: employee.username,
@@ -77,10 +78,20 @@ export const createEmployee = async (employee: Employee) => {
         });
       }
 
+      for (const leaveType of leavesTypes) {
+        await tx.employeeLeaveQuota.create({
+          data: {
+            employee_id: newEmployee.id,
+            leave_type_id: leaveType.id,
+            year: new Date().getFullYear(),
+          },
+        });
+      }
+
       return {
         ...newEmployee,
         username: user.username,
-        password: user.password_hash
+        password: user.password_hash,
       };
     });
 

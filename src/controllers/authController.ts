@@ -143,10 +143,7 @@ export const verifyOtpHandler = async (
       message: "OTP verified successfully",
       payload: [
         {
-          username: userByUsername.username,
-          user_id: userByUsername.id,
-          employee_id: userByUsername.employee?.id,
-          employee_code: userByUsername.employee?.employee_code,
+          ...userByUsername,
           token,
         },
       ],

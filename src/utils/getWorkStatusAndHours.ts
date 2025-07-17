@@ -5,16 +5,19 @@ dayjs.extend(utc);
 
 type WorkStatus = "early_leave" | "half_day" | "early_go" | "on_time" | "overtime";
 
-export const getWorkStatus = (params: {
-  check_in_time: string;   // ISO format with Z (UTC)
-  check_out_time: string;  // 'YYYY-MM-DD HH:mm:ss' (Local or SQL format)
-}): { working_hours: number; work_status: WorkStatus } => {
-  const { check_in_time, check_out_time } = params;
+export const getWorkStatus = (
+  check_in_time: string | null,
+  check_out_time: string | null
+): { working_hours: number; work_status: WorkStatus } => {
+  
+  if (!check_in_time || !check_out_time) {
+    throw new Error("Check-in and check-out times are required.");
+  }
 
-  console.log(params);
+  const today = dayjs().format("YYYY-MM-DD");
 
-  const checkIn = dayjs.utc(check_in_time);
-  const checkOut = dayjs.utc(check_out_time, "YYYY-MM-DD HH:mm:ss");
+  const checkIn = dayjs.utc(`${today} ${check_in_time}`, "YYYY-MM-DD HH:mm:ss");
+  const checkOut = dayjs.utc(`${today} ${check_out_time}`, "YYYY-MM-DD HH:mm:ss");
 
   if (!checkIn.isValid() || !checkOut.isValid()) {
     throw new Error("Invalid check-in or check-out time format");
