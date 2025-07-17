@@ -23,8 +23,9 @@ router.use("/asset-complaints", assetComplaintRoutes);
 
 router.get("/", (req, res) => {
   const dateObj = new Date();
-  const date = dateObj.getDate();
-  const time = dateObj.getTime().toLocaleString("en-US");
+  const date = dateObj.toISOString().split("T")[0]; // e.g., "2025-07-16"
+  const time = dateObj.toTimeString().split(" ")[0]; // e.g., "14:30:45"
+
   res.status(200).json({
     status: 1,
     message: "Asset complaints fetched successfully",
