@@ -138,7 +138,7 @@ export const markCheckOut = async (data: {
   check_out_time: string;
   checkoutStatus: WorkStatus;
   check_out_office_location: number;
-  workingHours: number;
+  workingHours: string;
   dayStatus: string;
   employee_id: number;
   attendance_date: string;

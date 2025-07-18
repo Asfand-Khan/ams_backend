@@ -383,7 +383,7 @@ model Attendance {
   check_out_time      String?
   check_out_device_id String?         @db.VarChar(100)
   check_out_office_id Int?
-  work_hours          Decimal?        @db.Decimal(4, 2)
+  work_hours          String?
   check_in_status     CheckInStatus?
   check_out_status    CheckOutStatus?
   day_status          DayStatus       @default(present)

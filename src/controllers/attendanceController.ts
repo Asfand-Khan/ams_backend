@@ -129,7 +129,7 @@ export const checkOutHandler = async (
       ...parsedData,
       dayStatus,
       checkoutStatus: work_status.work_status,
-      workingHours: work_status.working_hours,
+      workingHours: work_status.working_hours_formattted,
       attendance_id: attendance.id,
     };
 

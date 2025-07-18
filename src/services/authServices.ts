@@ -18,9 +18,7 @@ export const getUserByUsername = (username: string) => {
   try {
     return prisma.user.findUnique({
       where: { username },
-      include: {
-        employee: true,
-      },
+      include: { employee: true },
     });
   } catch (error: any) {
     throw new Error(`Failed to fetch user by username: ${error.message}`);
