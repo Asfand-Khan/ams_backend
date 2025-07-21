@@ -58,3 +58,30 @@ export const verifyOTP = async (
   });
   return true;
 };
+
+export const getUserMenus = async (userId: number) => {
+  const userMenus = await prisma.userMenuRight.findMany({
+    where: {
+      user_id: userId,
+    },
+    include: {
+      menu: true,
+    },
+  });
+
+  // Transform to desired response
+  const formattedMenus = userMenus.map((userMenu) => ({
+    menu_id: userMenu.menu.id,
+    menu_name: userMenu.menu.name,
+    icon: userMenu.menu.icon,
+    sorting: userMenu.menu.sorting,
+    url: userMenu.menu.url,
+    parent_id: userMenu.menu.parent_id,
+    can_view: userMenu.can_view ? "1" : "0",
+    can_create: userMenu.can_create ? "1" : "0",
+    can_edit: userMenu.can_edit ? "1" : "0",
+    can_delete: userMenu.can_delete ? "1" : "0",
+  }));
+
+  return formattedMenus;
+};

@@ -152,7 +152,8 @@ model User {
   updated_at           DateTime  @updatedAt
 
   // ✅ Relation to the Employee this User is linked with
-  employee Employee? @relation("UserEmployee", fields: [employee_id], references: [id])
+  employee         Employee?       @relation("UserEmployee", fields: [employee_id], references: [id])
+  user_menu_rights UserMenuRight[]
 
   @@index([email], name: "idx_email")
   @@index([username], name: "idx_username")
@@ -218,11 +219,52 @@ model Employee {
   attendanceCorrectionRequestsReviewed AttendanceCorrectionRequest[] @relation("EmployeeReviewedAttendanceCorrectionRequests")
 
   /// ✅ Added Asset Complaint Relations
-  assetComplaintRequestsCreated   AssetComplaintRequest[] @relation("EmployeeAssetComplaintRequests")
-  assetComplaintRequestsReviewed  AssetComplaintRequest[] @relation("EmployeeReviewedAssetComplaintRequests")
+  assetComplaintRequestsCreated  AssetComplaintRequest[] @relation("EmployeeAssetComplaintRequests")
+  assetComplaintRequestsReviewed AssetComplaintRequest[] @relation("EmployeeReviewedAssetComplaintRequests")
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
+}
+
+model Menu {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String? @db.VarChar(100)
+  parent_id   Int?
+  url         String? @db.VarChar(255)
+  icon        String? @db.VarChar(100)
+  sorting     Int     @default(0)
+  created_by  Int
+  deleted_by  Int?
+  is_active   Boolean @default(true)
+  is_deleted  Boolean @default(false)
+
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+
+  // Relations
+  parent           Menu?           @relation("menu_children", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  children         Menu[]          @relation("menu_children")
+  user_menu_rights UserMenuRight[]
+}
+
+model UserMenuRight {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  menu_id    Int
+  can_view   Boolean  @default(true)
+  can_create Boolean  @default(false)
+  can_edit   Boolean  @default(false)
+  can_delete Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  menu Menu @relation(fields: [menu_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, menu_id])
 }
 
 model Department {
@@ -501,28 +543,28 @@ model AttendanceCorrectionRequest {
 }
 
 model AssetComplaintRequest {
-  id                   Int       @id @default(autoincrement())
-  employee_id          Int
-  reviewed_by          Int?
+  id          Int  @id @default(autoincrement())
+  employee_id Int
+  reviewed_by Int?
 
-  request_type         AssetRequestType
-  category             ComplaintCategory
-  asset_type           AssetType
+  request_type AssetRequestType
+  category     ComplaintCategory
+  asset_type   AssetType
 
-  reason               String
-  status               ComplaintStatus  @default(pending)
-  requested_at         DateTime         @default(now())
-  reviewed_at          DateTime?
-  resolution_remarks   String?
+  reason             String
+  status             ComplaintStatus @default(pending)
+  requested_at       DateTime        @default(now())
+  reviewed_at        DateTime?
+  resolution_remarks String?
 
-  is_active            Boolean  @default(true)
-  is_deleted           Boolean  @default(false)
-  created_at           DateTime @default(now())
-  updated_at           DateTime @updatedAt
+  is_active  Boolean  @default(true)
+  is_deleted Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
 
   /// ✅ Relations
-  requested_by_employee   Employee  @relation("EmployeeAssetComplaintRequests", fields: [employee_id], references: [id], onDelete: Cascade)
-  reviewed_by_employee    Employee? @relation("EmployeeReviewedAssetComplaintRequests", fields: [reviewed_by], references: [id], onDelete: SetNull)
+  requested_by_employee Employee  @relation("EmployeeAssetComplaintRequests", fields: [employee_id], references: [id], onDelete: Cascade)
+  reviewed_by_employee  Employee? @relation("EmployeeReviewedAssetComplaintRequests", fields: [reviewed_by], references: [id], onDelete: SetNull)
 
   @@index([employee_id, status])
   @@index([category, asset_type])

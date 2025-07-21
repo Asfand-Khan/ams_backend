@@ -104,6 +104,37 @@ export const employeeSchema = z.object({
     .optional(),
 
   status: statusEnum.default("active"),
+  menu_rights: z
+    .array(
+      z.object({
+        menu_id: z.number({
+          required_error: "Menu ID is required",
+        }),
+        can_view: z
+          .boolean({
+            required_error: "Can view is required",
+          })
+          .default(true),
+        can_create: z
+          .boolean({
+            required_error: "Can create is required",
+          })
+          .default(false),
+        can_edit: z
+          .boolean({
+            required_error: "Can edit is required",
+          })
+          .default(false),
+        can_delete: z
+          .boolean({
+            required_error: "Can delete is required",
+          })
+          .default(false),
+      }),
+      { required_error: "Menu rights are required" }
+    )
+    .nullable()
+    .optional(),
 });
 
 export const employeeUpdateSchema = employeeSchema.extend({
@@ -111,7 +142,6 @@ export const employeeUpdateSchema = employeeSchema.extend({
     .number({ required_error: "Employee ID is required" })
     .int("Employee ID must be an integer"),
 });
-
 
 export type Employee = z.infer<typeof employeeSchema>;
 export type EmployeeUpdate = z.infer<typeof employeeUpdateSchema>;

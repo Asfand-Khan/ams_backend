@@ -61,6 +61,21 @@ export const createEmployee = async (employee: Employee) => {
         },
       });
 
+      if (employee.menu_rights && employee.menu_rights.length > 0) {
+        const menuRightsData = employee.menu_rights.map((right) => ({
+          user_id: user.id,
+          menu_id: right.menu_id,
+          can_view: right.can_view ?? true,
+          can_create: right.can_create ?? false,
+          can_edit: right.can_edit ?? false,
+          can_delete: right.can_delete ?? false,
+        }));
+
+        await prisma.userMenuRight.createMany({
+          data: menuRightsData,
+        });
+      }
+
       await tx.employeeShift.create({
         data: {
           employee_id: newEmployee.id,

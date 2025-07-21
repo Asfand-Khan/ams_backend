@@ -8,6 +8,7 @@ import {
   comparePassword,
   generateOTP,
   getUserByUsername,
+  getUserMenus,
   verifyOTP,
 } from "../services/authServices";
 import { sendEmail } from "../utils/sendEmail";
@@ -138,13 +139,16 @@ export const verifyOtpHandler = async (
     // Generate token
     const token = generateToken(userByUsername.employee?.id || 0);
 
+    const menus = await getUserMenus(userByUsername.id);
+
     return res.status(200).json({
       status: 1,
       message: "OTP verified successfully",
       payload: [
         {
-          ...userByUsername,
           token,
+          ...userByUsername,
+          menus,
         },
       ],
     });
