@@ -78,7 +78,7 @@ const PORT = process.env.PORT || 4000;
 
 // socket io setup
 const server: Server = require("http").createServer(app);
-const io = new SocketIOServer(server, {
+export const io = new SocketIOServer(server, {
   cors: {
     origin: "*", // Adjust this for production with specific origins
     methods: ["GET", "POST"]
@@ -91,6 +91,15 @@ appSetup(app);
 // socket io setup
 io.on("connection", (socket) => {
   logger.info(`A user connected with socket ID: ${socket.id}`);
+
+  // Allow client to join a room based on user_id
+  socket.on("join", (userId) => {
+    if (userId) {
+      socket.join(`user_${userId}`);
+      logger.info(`User ${userId} joined room user_${userId} with socket ID: ${socket.id}`);
+    }
+  });
+
   socket.on("disconnect", () => {
     logger.info(`User disconnected with socket ID: ${socket.id}`);
   });

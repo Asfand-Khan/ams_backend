@@ -203,11 +203,58 @@ export const getEmployeeById = async (id: number) => {
   });
 };
 
-export const changeEmployeePassword = async (user_id: number, new_password: string) => {
+export const changeEmployeePassword = async (
+  user_id: number,
+  new_password: string
+) => {
   return prisma.user.update({
     where: { id: user_id },
     data: {
-      password_hash: new_password
+      password_hash: new_password,
     },
   });
+};
+
+export const getEmployeeProfileById = async (id: number) => {
+  return prisma.$queryRaw`
+    SELECT 
+    e.id AS employee_id,
+    e.employee_code,
+    e.full_name,
+    e.email,
+    e.phone,
+    e.cnic,
+    e.gender,
+    DATE_FORMAT(e.dob, '%M %d, %Y') AS dob,
+    e.join_date,
+    e.profile_picture,
+    e.address,
+    d.name AS department_name,
+    des.title AS designation_title,
+    s.name AS shift_name,
+    s.start_time AS shift_start_time,
+    s.end_time AS shift_end_time,
+    GROUP_CONCAT(DISTINCT t.name ORDER BY t.name SEPARATOR ', ') AS team_names,
+    GROUP_CONCAT(DISTINCT tl.full_name ORDER BY tl.full_name SEPARATOR ', ') AS team_leads
+FROM Employee e
+LEFT JOIN Department d ON e.department_id = d.id
+LEFT JOIN Designation des ON e.designation_id = des.id
+LEFT JOIN (
+    SELECT es1.employee_id, es1.shift_id
+    FROM EmployeeShift es1
+    INNER JOIN (
+        SELECT employee_id, MAX(effective_from) AS latest
+        FROM EmployeeShift
+        WHERE is_active = 1 AND is_deleted = 0
+        GROUP BY employee_id
+    ) es2 ON es1.employee_id = es2.employee_id AND es1.effective_from = es2.latest
+    WHERE es1.is_active = 1 AND es1.is_deleted = 0
+) latest_shift ON latest_shift.employee_id = e.id
+LEFT JOIN Shift s ON s.id = latest_shift.shift_id
+LEFT JOIN TeamMember tm ON tm.employee_id = e.id AND tm.is_active = 1 AND tm.is_deleted = 0
+LEFT JOIN Team t ON t.id = tm.team_id AND t.is_active = 1 AND t.is_deleted = 0
+LEFT JOIN Employee tl ON t.team_lead_id = tl.id
+WHERE e.id = ${id}
+GROUP BY e.id;
+  `;
 };

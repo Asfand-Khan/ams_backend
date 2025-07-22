@@ -1,79 +1,26 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import {
-  attendanceSchema,
-  attendanceSummarySchema,
-  checkInSchema,
-  checkOutSchema,
-  createAttendanceSchema,
-  singleAttendanceSchema,
-  updateAttendanceSchema,
-} from "../validations/attendanceValidations";
-import { getEmployeeById } from "../services/employeeServices";
-import {
-  addAttendance,
-  attendanceById,
-  attendanceSummary,
-  getAttendance,
-  getDayStatus,
-  getEmployeeAttendance,
-  getEmployeeShift,
-  ifCheckInExists,
-  markCheckIn,
-  markCheckOut,
-  singleAttendance,
-  updateAttendance,
-} from "../services/attendanceServices";
-import { getCheckInStatus } from "../utils/getCheckInStatus";
-import { getWorkStatus } from "../utils/getWorkStatusAndHours";
+import { createNotificationSchema } from "../validations/notificationValidations";
+import { createNotification } from "../services/notificationServices";
+import { io } from "../server";
 
-// Module --> Attendance
-// Method --> GET (Protected)
-// Endpoint --> /api/v1/attendances/check-in
-// Description --> Mark the check-in of the employee
-export const checkInHandler = async (
+// Module --> Notifications
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/notifications/add
+// Description --> Create a new notification
+export const createNotificationHandler = async (
   req: Request,
   res: Response
 ): Promise<any> => {
   try {
-    const parsedData = checkInSchema.parse(req.body);
+    const parsedData = createNotificationSchema.parse(req.body);
 
-    const employee = await getEmployeeById(parsedData.employee_id);
-    if (!employee) {
-      return res.status(404).json({
-        status: 0,
-        message: "Employee not found",
-        payload: [],
-      });
-    }
-
-    const attendanceExists = await ifCheckInExists(
-      parsedData.employee_id,
-      parsedData.attendance_date
-    );
-
-    if (attendanceExists !== null) {
-      throw new Error("Attendance already exists");
-    }
-
-    const shift = await getEmployeeShift(parsedData.employee_id);
-
-    if (!shift) {
-      throw new Error("Shift not found");
-    }
-
-    const checkInStatus = await getCheckInStatus(
-      parsedData.check_in_time,
-      shift.start_time,
-      shift.grace_minutes
-    );
-
-    const attendance = await markCheckIn(parsedData, checkInStatus);
+    const notification = await createNotification(parsedData, io);
 
     return res.status(200).json({
       status: 1,
-      message: "Employee checked-in successfully",
-      payload: [attendance],
+      message: "Notification created successfully",
+      payload: [notification],
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {

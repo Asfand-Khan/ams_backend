@@ -10,6 +10,7 @@ import attendanceCorrectionRoutes from "./attendanceCorrectionRoutes";
 import assetComplaintRoutes from "./assetComplaintRoutes";
 import wifiNetworkRoutes from "./officeWifiNetworkRoutes";
 import menuRoutes from "./menuRoutes";
+import notificationRoutes from "./notificationsRoutes";
 
 const router = Router();
 
@@ -24,6 +25,7 @@ router.use("/attendance-corrections", attendanceCorrectionRoutes);
 router.use("/asset-complaints", assetComplaintRoutes);
 router.use("/wifi-networks", wifiNetworkRoutes);
 router.use("/menus", menuRoutes);
+router.use("/notifications", notificationRoutes);
 
 router.get("/", (req, res) => {
   const dateObj = new Date();

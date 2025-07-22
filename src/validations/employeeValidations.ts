@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
+
+const isValidPastOrTodayDate = (dateStr: string) => {
+  const date = new Date(dateStr);
+  const today = new Date();
+  return date.getDate() <= today.getDate();
+};
+
 export const genderEnum = z.enum(["male", "female"], {
   required_error: "Gender is required",
   invalid_type_error: "Gender must be either 'male' or 'female'",
@@ -151,6 +160,66 @@ export const employeeChangePasswordSchema = z.object({
   new_password: z.string({ required_error: "New password is required" }),
 });
 
+export const employeeProfileSchema = z.object({
+  employee_id: z
+    .number({ required_error: "Employee ID is required" })
+    .int("Employee ID must be an integer"),
+});
+
+export const employeeUpdateProfileSchema = z.object({
+  employee_id: z
+    .number({ required_error: "Employee ID is required" })
+    .int("Employee ID must be an integer"),
+  fullname: z
+    .string({ invalid_type_error: "Full name must be a string" })
+    .max(100, "Full name must be at most 100 characters")
+    .toLowerCase()
+    .nullable()
+    .optional(),
+  fathername: z
+    .string({ invalid_type_error: "Father name must be a string" })
+    .max(100, "Father name must be at most 100 characters")
+    .toLowerCase()
+    .nullable()
+    .optional(),
+  dob: z
+    .string({ required_error: "DOB is required" })
+    .regex(dateRegex, "DOB must be in 'YYYY-MM-DD' format")
+    .refine(isValidPastOrTodayDate, "DOB cannot be in the future"),
+  email: z
+    .string({ invalid_type_error: "Email must be a string" })
+    .email("Invalid email address")
+    .toLowerCase()
+    .nullable()
+    .optional(),
+  phone: z
+    .string()
+    .startsWith("03", "Phone number must start with '03'")
+    .length(
+      11,
+      "Phone number must be at exactly 11 characters i.e: 03XXXXXXXXXX"
+    )
+    .or(z.literal("").transform(() => undefined))
+    .nullable()
+    .optional(),
+  cnic: z
+    .string()
+    .regex(/^\d{5}-\d{7}-\d$/, "CNIC must be in the format 12345-1234567-1")
+    .length(15, "CNIC must be at exactly 15 characters")
+    .optional()
+    .or(z.literal("").transform(() => undefined))
+    .nullable()
+    .optional(),
+  address: z
+    .string()
+    .max(1000, "Address must be at most 1000 characters")
+    .toLowerCase()
+    .nullable()
+    .optional(),
+});
+
 export type Employee = z.infer<typeof employeeSchema>;
 export type EmployeeUpdate = z.infer<typeof employeeUpdateSchema>;
 export type EmployeeChangePassword = z.infer<typeof employeeChangePasswordSchema>;
+export type EmployeeProfile = z.infer<typeof employeeProfileSchema>;
+export type EmployeeUpdateProfile = z.infer<typeof employeeUpdateProfileSchema>;

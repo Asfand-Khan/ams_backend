@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import {
   employeeChangePasswordSchema,
+  employeeProfileSchema,
   employeeSchema,
 } from "../validations/employeeValidations";
 import {
@@ -13,6 +14,7 @@ import {
   getEmployeeById,
   getEmployeeByPhone,
   getEmployeeByUsername,
+  getEmployeeProfileById,
 } from "../services/employeeServices";
 import { sendEmail } from "../utils/sendEmail";
 import { getSignUpTemplate } from "../utils/signUpTemplate";
@@ -149,7 +151,10 @@ export const changeEmployeePasswordHandler = async (
       });
     }
 
-    const isPasswordValid = comparePassword(parsedData.old_password,user.password_hash);
+    const isPasswordValid = comparePassword(
+      parsedData.old_password,
+      user.password_hash
+    );
     if (!isPasswordValid) {
       return res.status(400).json({
         status: 0,
@@ -164,6 +169,44 @@ export const changeEmployeePasswordHandler = async (
       status: 1,
       message: "Employee password changed successfully",
       payload: [employee],
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+export const getEmployeeProfileHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = employeeProfileSchema.parse(req.body);
+
+    const employee = await getEmployeeProfileById(parsedData.employee_id);
+    if (!employee) {
+      return res.status(404).json({
+        status: 0,
+        message: "Employee not found",
+        payload: [],
+      });
+    }
+
+    return res.status(200).json({
+      status: 1,
+      message: "Employee profile fetched successfully",
+      payload: employee,
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
