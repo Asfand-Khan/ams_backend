@@ -224,35 +224,34 @@ export const getAttendance = async (data: Attendance) => {
     if (data.employee_id && data.start_date && data.end_date) {
       attendance = await prisma.$queryRaw`
         WITH RECURSIVE date_series AS (
-        SELECT DATE(${data.start_date}) as date
-        UNION ALL
-        SELECT DATE_ADD(date, INTERVAL 1 DAY)
-        FROM date_series
-        WHERE date < ${data.end_date}
+	        SELECT DATE(${data.start_date}) AS date
+	        UNION ALL
+	        SELECT DATE_ADD(date, INTERVAL 1 DAY)
+	        FROM date_series
+	        WHERE date < DATE(${data.end_date})
         )
-        SELECT
-          emp.id AS employee_id,
-          emp.employee_code,
-          emp.full_name,
-          d.date,
-          att.check_in_time,
-          att.check_out_time,
-          att.check_in_status,
-          att.check_out_status,
-          att.work_hours,
-          o1.name AS check_in_office,
-          o2.name AS check_out_office
-        FROM
-          date_range d
-        CROSS JOIN Employee emp
-        LEFT JOIN Attendance att
-        ON emp.id = att.employee_id AND att.date = d.date
-        LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
-        LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
-        WHERE
-          emp.id = ${data.employee_id}
-        ORDER BY
-          d.date
+          SELECT
+	          emp.id AS employee_id,
+	          emp.employee_code,
+	          emp.full_name,
+	          d.date,
+	          att.check_in_time,
+	          att.check_out_time,
+	          att.check_in_status,
+	          att.check_out_status,
+	          att.work_hours,
+	          o1.name AS check_in_office,
+	          o2.name AS check_out_office
+          FROM
+	          date_series d
+	        CROSS JOIN Employee emp
+	        LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = d.date
+	        LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
+	        LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
+          WHERE
+	          emp.id = ${data.employee_id}
+          ORDER BY
+	          d.date;
       `;
     } else {
       attendance = await prisma.$queryRaw`
