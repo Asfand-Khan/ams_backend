@@ -1,16 +1,22 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { employeeSchema } from "../validations/employeeValidations";
 import {
+  employeeChangePasswordSchema,
+  employeeSchema,
+} from "../validations/employeeValidations";
+import {
+  changeEmployeePassword,
   createEmployee,
   getEmployeeByCnic,
   getEmployeeByCode,
   getEmployeeByEmail,
+  getEmployeeById,
   getEmployeeByPhone,
   getEmployeeByUsername,
 } from "../services/employeeServices";
 import { sendEmail } from "../utils/sendEmail";
 import { getSignUpTemplate } from "../utils/signUpTemplate";
+import { comparePassword, getUserByEmployeeId } from "../services/authServices";
 
 // Module --> Employee
 // Method --> POST (Protected)
@@ -87,7 +93,12 @@ export const createEmployeeHandler = async (
       await sendEmail({
         to: newEmployee.email,
         subject: "Employee Registration",
-        html: getSignUpTemplate(newEmployee.full_name, newEmployee.username,newEmployee.password, "https://getorio.com/" ),
+        html: getSignUpTemplate(
+          newEmployee.full_name,
+          newEmployee.username,
+          newEmployee.password,
+          "https://getorio.com/"
+        ),
       });
     }
 
@@ -95,6 +106,64 @@ export const createEmployeeHandler = async (
       status: 1,
       message: "Employee created successfully",
       payload: [newEmployee],
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+export const changeEmployeePasswordHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = employeeChangePasswordSchema.parse(req.body);
+
+    const employee = await getEmployeeById(parsedData.employee_id);
+    if (!employee) {
+      return res.status(404).json({
+        status: 0,
+        message: "Employee not found",
+        payload: [],
+      });
+    }
+
+    const user = await getUserByEmployeeId(parsedData.employee_id);
+    if (!user) {
+      return res.status(404).json({
+        status: 0,
+        message: "User associated with employee does not exists",
+        payload: [],
+      });
+    }
+
+    const isPasswordValid = comparePassword(parsedData.old_password,user.password_hash);
+    if (!isPasswordValid) {
+      return res.status(400).json({
+        status: 0,
+        message: "Invalid old password",
+        payload: [],
+      });
+    }
+
+    await changeEmployeePassword(user.id, parsedData.new_password);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Employee password changed successfully",
+      payload: [employee],
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {

@@ -143,5 +143,14 @@ export const employeeUpdateSchema = employeeSchema.extend({
     .int("Employee ID must be an integer"),
 });
 
+export const employeeChangePasswordSchema = z.object({
+  employee_id: z
+    .number({ required_error: "Employee ID is required" })
+    .int("Employee ID must be an integer"),
+  old_password: z.string({ required_error: "Old password is required" }),
+  new_password: z.string({ required_error: "New password is required" }),
+});
+
 export type Employee = z.infer<typeof employeeSchema>;
 export type EmployeeUpdate = z.infer<typeof employeeUpdateSchema>;
+export type EmployeeChangePassword = z.infer<typeof employeeChangePasswordSchema>;

@@ -202,3 +202,12 @@ export const getEmployeeById = async (id: number) => {
     where: { id },
   });
 };
+
+export const changeEmployeePassword = async (user_id: number, new_password: string) => {
+  return prisma.user.update({
+    where: { id: user_id },
+    data: {
+      password_hash: new_password
+    },
+  });
+};

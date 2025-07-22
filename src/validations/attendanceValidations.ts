@@ -78,7 +78,90 @@ export const attendanceSummarySchema = z.object({
     .regex(dateRegex, "End date must be in 'YYYY-MM-DD' format"),
 });
 
+
+export const attendanceSchema = z
+  .object({
+    employee_id: z
+      .number({ required_error: "Employee ID is required" })
+      .int("Employee ID must be an integer")
+      .positive("Employee ID must be a positive number")
+      .nullable()
+      .optional(),
+
+    start_date: z
+      .string({ required_error: "Start date is required" })
+      .regex(dateRegex, "Start date must be in 'YYYY-MM-DD' format")
+      .nullable()
+      .optional(),
+
+    end_date: z
+      .string({ required_error: "End date is required" })
+      .regex(dateRegex, "End date must be in 'YYYY-MM-DD' format")
+      .nullable()
+      .optional(),
+  })
+  .refine((data) => {
+    const { employee_id, start_date, end_date } = data;
+    const allProvided = employee_id && start_date && end_date;
+    const allEmpty = !employee_id && !start_date && !end_date;
+
+    return allProvided || allEmpty;
+  }, {
+    message:
+      "You must provide either all of Employee ID, Start Date, End Date — or none of them",
+  });
+
+
+export const createAttendanceSchema = z.object({
+  employee_id: z
+    .number({ message: "Employee ID is required" })
+    .int({ message: "Employee ID must be an integer" })
+    .positive({ message: "Employee ID must be a positive number" }),
+
+  attendance_date: z
+    .string({ required_error: "Attendance date is required" })
+    .regex(dateRegex, "Start date must be in 'YYYY-MM-DD' format"),
+
+  check_in_time: z
+    .string({ required_error: "Check-in time is required" })
+    .regex(timeRegex, "Check-in time must be in 'HH:mm:ss' 24-hour format")
+    .nullable()
+    .optional(),
+
+  check_out_time: z
+    .string({ required_error: "Check-out time is required" })
+    .regex(timeRegex, "Check-out time must be in 'HH:mm:ss' 24-hour format")
+    .nullable()
+    .optional(),
+});
+
+export const updateAttendanceSchema = z.object({
+  attendance_id: z
+    .number({ message: "Attendance ID is required" })
+    .int({ message: "Attendance ID must be an integer" })
+    .positive({ message: "Attendance ID must be a positive number" }),
+
+  attendance_date: z
+    .string({ required_error: "Attendance date is required" })
+    .regex(dateRegex, "Start date must be in 'YYYY-MM-DD' format"),
+
+  check_in_time: z
+    .string({ required_error: "Check-in time is required" })
+    .regex(timeRegex, "Check-in time must be in 'HH:mm:ss' 24-hour format")
+    .nullable()
+    .optional(),
+
+  check_out_time: z
+    .string({ required_error: "Check-out time is required" })
+    .regex(timeRegex, "Check-out time must be in 'HH:mm:ss' 24-hour format")
+    .nullable()
+    .optional(),
+});
+
 export type CheckIn = z.infer<typeof checkInSchema>;
 export type CheckOut = z.infer<typeof checkOutSchema>;
 export type SingleAttendance = z.infer<typeof singleAttendanceSchema>;
 export type AttendanceSummary = z.infer<typeof attendanceSummarySchema>;
+export type Attendance = z.infer<typeof attendanceSchema>;
+export type CreateAttendance = z.infer<typeof createAttendanceSchema>;
+export type UpdateAttendance = z.infer<typeof updateAttendanceSchema>;

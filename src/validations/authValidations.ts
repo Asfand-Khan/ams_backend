@@ -30,6 +30,13 @@ export const verifyOtpSchema = z.object({
   .refine((val) => val >= 100000 && val <= 999999, "OTP must be a 6-digit number"),
 });
 
+export const forgetPasswordSchema = z.object({
+  employee_email: z
+    .string({ required_error: "Employee email is required" })
+    .email("Invalid email format"),
+});
+
 export type Login = z.infer<typeof loginSchema>;
 export type SendOtp = z.infer<typeof sendOtpSchema>;
 export type VerifyOtp = z.infer<typeof verifyOtpSchema>;
+export type ForgetPassword = z.infer<typeof forgetPasswordSchema>;

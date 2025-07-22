@@ -25,6 +25,16 @@ export const getUserByUsername = (username: string) => {
   }
 };
 
+export const getUserByEmail = (email: string) => {
+  try {
+    return prisma.user.findUnique({
+      where: { email }
+    });
+  } catch (error: any) {
+    throw new Error(`Failed to fetch user by email: ${error.message}`);
+  }
+};
+
 export const comparePassword = (password: string, oldPassword: string) => {
   try {
     return password === oldPassword;
@@ -84,4 +94,15 @@ export const getUserMenus = async (userId: number) => {
   }));
 
   return formattedMenus;
+};
+
+export const getUserByEmployeeId = async (employeeId: number) => {
+  try {
+   return prisma.user.findFirst({
+    where: { employee_id: employeeId },
+  }); 
+  } catch (error: any) {
+    throw new Error(`Failed to fetch user by employee ID: ${error.message}`);
+    
+  }
 };

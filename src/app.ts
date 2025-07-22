@@ -11,27 +11,44 @@ export default (app: express.Application): void => {
   app.use(cors());
   app.use(helmet());
 
-  app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+  app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-  app.use(morgan(function (tokens, req, res) {
-    logger.info(`[METHOD]: ${tokens.method(req, res)} [PATH]: ${tokens.url(req, res)} [STATUS]: ${tokens.status(req, res)} [CONTENT_LENGTH]: ${tokens.res(req, res, "content-length")} [RESPONSE_TIME]: ${tokens["response-time"](req, res)} ms [BODY]: ${JSON.stringify(req.body)}`);
+  app.use(
+    morgan(function (tokens, req, res) {
+      logger.info(
+        `[METHOD]: ${tokens.method(req, res)} [PATH]: ${tokens.url(
+          req,
+          res
+        )} [STATUS]: ${tokens.status(req, res)} [CONTENT_LENGTH]: ${tokens.res(
+          req,
+          res,
+          "content-length"
+        )} [RESPONSE_TIME]: ${tokens["response-time"](
+          req,
+          res
+        )} ms [BODY]: ${JSON.stringify(req.body)}`
+      );
       return [
-        '[METHOD]:',
+        "[METHOD]:",
         tokens.method(req, res),
-        '[PATH]:',
+        "[PATH]:",
         tokens.url(req, res),
-        '[STATUS]:',
+        "[STATUS]:",
         tokens.status(req, res),
-        '[CONTENT_LENGTH]:',
+        "[CONTENT_LENGTH]:",
         tokens.res(req, res, "content-length"),
-        '[RESPONSE_TIME]:',
+        "[RESPONSE_TIME]:",
         tokens["response-time"](req, res),
         "ms",
       ].join(" ");
-  }));
+    })
+  );
 
   app.use("/api/v1", routes);
 
+  app.use((req, res, next) => {
+    res.status(404).json({ message: "API Route Not Found" });
+  });
   app.use(
     (
       err: Error,

@@ -133,6 +133,27 @@ enum ComplaintStatus {
   rejected
 }
 
+enum NotificationType {
+  attendance
+  leave
+  shift
+  general
+  alert
+  holiday
+}
+
+enum Priority {
+  low
+  medium
+  high
+}
+
+enum Status {
+  sent
+  read
+  unread
+}
+
 ///////////////////// ENUMS /////////////////////////////////
 
 model User {
@@ -154,6 +175,7 @@ model User {
   // ✅ Relation to the Employee this User is linked with
   employee         Employee?       @relation("UserEmployee", fields: [employee_id], references: [id])
   user_menu_rights UserMenuRight[]
+  Notification     Notification[]
 
   @@index([email], name: "idx_email")
   @@index([username], name: "idx_username")
@@ -568,6 +590,26 @@ model AssetComplaintRequest {
 
   @@index([employee_id, status])
   @@index([category, asset_type])
+}
+
+model Notification {
+  id         Int              @id @default(autoincrement())
+  user_id    Int?
+  title      String           @db.VarChar(100)
+  message    String
+  type       NotificationType
+  priority   Priority         @default(medium)
+  status     Status           @default(unread)
+  broadcast  Boolean          @default(false)
+  sent_at    DateTime         @default(now())
+  is_active  Boolean          @default(true)
+  is_deleted Boolean          @default(false)
+  created_at DateTime         @default(now())
+
+  user User? @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, status])
+  @@index([broadcast])
 }
 
 // PUT LOGS TABLES HERE UNDER THIS COMMENT

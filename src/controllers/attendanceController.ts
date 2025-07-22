@@ -1,14 +1,20 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import {
+  attendanceSchema,
   attendanceSummarySchema,
   checkInSchema,
   checkOutSchema,
+  createAttendanceSchema,
   singleAttendanceSchema,
+  updateAttendanceSchema,
 } from "../validations/attendanceValidations";
 import { getEmployeeById } from "../services/employeeServices";
 import {
+  addAttendance,
+  attendanceById,
   attendanceSummary,
+  getAttendance,
   getDayStatus,
   getEmployeeAttendance,
   getEmployeeShift,
@@ -16,6 +22,7 @@ import {
   markCheckIn,
   markCheckOut,
   singleAttendance,
+  updateAttendance,
 } from "../services/attendanceServices";
 import { getCheckInStatus } from "../utils/getCheckInStatus";
 import { getWorkStatus } from "../utils/getWorkStatusAndHours";
@@ -133,6 +140,8 @@ export const checkOutHandler = async (
       attendance_id: attendance.id,
     };
 
+    console.log("final daata", data);
+
     const updatedAttendance = await markCheckOut(data);
 
     return res.status(200).json({
@@ -223,6 +232,213 @@ export const getAttendanceSummaryHandler = async (
       message: "Fetched attendance summary successfully",
       payload: attSummary,
     });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/attendances/
+// Description --> Fetch the attendance
+export const getAttendanceHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = attendanceSchema.parse(req.body);
+    const attendance = await getAttendance(parsedData);
+
+    if (!attendance) {
+      return res.status(404).json({
+        status: 0,
+        message: "Attendance not found",
+        payload: [],
+      });
+    }
+
+    return res.status(200).json({
+      status: 1,
+      message: "Fetched attendance successfully",
+      payload: attendance,
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/attendances/add
+// Description --> Add attendance
+export const addAttendanceHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = createAttendanceSchema.parse(req.body);
+    if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
+      throw new Error(
+        "Check in and check out time can not be null at the same time, one should atleast be provided."
+      );
+    }
+    if (parsedData.check_out_time) {
+      if (parsedData.check_in_time == null) {
+        throw new Error(
+          "Check in time can not be null when check out time is provided."
+        );
+      }
+    }
+
+    const employee = await getEmployeeById(parsedData.employee_id);
+    if (!employee) {
+      return res.status(400).json({
+        status: 0,
+        message: "Employee not found",
+        payload: [],
+      });
+    }
+
+    const shift = await getEmployeeShift(parsedData.employee_id);
+    if (!shift) {
+      throw new Error("Shift not found");
+    }
+
+    let check_in_status = null;
+    if (parsedData.check_in_time) {
+      check_in_status = await getCheckInStatus(
+        parsedData.check_in_time,
+        shift.start_time,
+        shift.grace_minutes
+      );
+    }
+
+    let work_status = null;
+    if (parsedData.check_in_time && parsedData.check_out_time) {
+      work_status = await getWorkStatus(
+        parsedData.check_in_time,
+        parsedData.check_out_time
+      );
+    }
+
+    const attendance = await addAttendance(
+      parsedData,
+      work_status,
+      check_in_status
+    );
+
+    return res.status(200).json({
+      status: 1,
+      message: "Added attendance successfully",
+      payload: [attendance],
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/attendances/update
+// Description --> Update attendance
+export const updateAttendanceHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = updateAttendanceSchema.parse(req.body);
+    if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
+      throw new Error(
+        "Check in and check out time can not be null at the same time, one should atleast be provided."
+      );
+    }
+    if (parsedData.check_out_time) {
+      if (parsedData.check_in_time == null) {
+        throw new Error(
+          "Check in time can not be null when check out time is provided."
+        );
+      }
+    }
+
+    const attendance = await attendanceById(parsedData.attendance_id);
+    if (!attendance) {
+      return res.status(400).json({
+        status: 0,
+        message: "Attendance not found",
+        payload: [],
+      });
+    }
+
+    const shift = await getEmployeeShift(attendance.employee_id);
+    if (!shift) {
+      throw new Error("Shift not found");
+    }
+
+    let check_in_status = null;
+    if (parsedData.check_in_time) {
+      check_in_status = await getCheckInStatus(
+        parsedData.check_in_time,
+        shift.start_time,
+        shift.grace_minutes
+      );
+    }
+
+    let work_status = null;
+    if (parsedData.check_in_time && parsedData.check_out_time) {
+      work_status = await getWorkStatus(
+        parsedData.check_in_time,
+        parsedData.check_out_time
+      );
+    }
+
+    const updatedAttendance = await updateAttendance(
+      parsedData,
+      work_status,
+      check_in_status
+    );
+
+    return res.status(200).json({
+      status: 1,
+      message: "Updated attendance successfully",
+      payload: [updatedAttendance],
+    });
+    
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

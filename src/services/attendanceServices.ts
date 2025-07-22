@@ -1,5 +1,10 @@
 import prisma from "../config/db";
-import { CheckIn } from "../validations/attendanceValidations";
+import {
+  Attendance,
+  CheckIn,
+  CreateAttendance,
+  UpdateAttendance,
+} from "../validations/attendanceValidations";
 
 type WorkStatus =
   | "early_leave"
@@ -205,11 +210,128 @@ GROUP BY
   a.employee_id;
 `;
 
-    const attendanceSummary = await prisma.$queryRawUnsafe(
-      query
-    );
+    const attendanceSummary = await prisma.$queryRawUnsafe(query);
     return attendanceSummary;
   } catch (error: any) {
     throw new Error(`Failed to fetch attendance: ${error.message}`);
+  }
+};
+
+export const getAttendance = async (data: Attendance) => {
+  try {
+    let attendance = null;
+
+    if (data.employee_id && data.start_date && data.end_date) {
+      attendance = await prisma.$queryRaw`
+        WITH RECURSIVE date_series AS (
+        SELECT DATE(${data.start_date}) as date
+        UNION ALL
+        SELECT DATE_ADD(date, INTERVAL 1 DAY)
+        FROM date_series
+        WHERE date < ${data.end_date}
+        )
+      SELECT
+        emp.id,
+        emp.employee_code,
+        emp.full_name,
+        ds.date,
+        att.check_in_time,
+        att.check_out_time,
+        att.work_hours
+      FROM
+        Employee emp
+      CROSS JOIN date_series ds
+      LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = ds.date
+      WHERE
+        emp.id = ${data.employee_id}
+      ORDER BY ds.date;
+      `;
+    } else {
+      attendance = await prisma.$queryRaw`
+        SELECT
+	        emp.id,
+	        emp.employee_code,
+	        emp.full_name,
+	        CURRENT_DATE as date,
+	        att.check_in_time,
+	        att.check_out_time,
+	        att.work_hours 
+        FROM
+	        Employee emp
+	      LEFT JOIN Attendance att ON emp.id = att.employee_id 
+	      AND att.date = CURRENT_DATE 
+        WHERE
+	        emp.is_deleted = FALSE
+      `;
+    }
+
+    return attendance;
+  } catch (error: any) {
+    throw new Error(`Failed to fetch attendance: ${error.message}`);
+  }
+};
+
+export const addAttendance = async (
+  data: CreateAttendance,
+  work_status: any,
+  check_in_status: any
+) => {
+  try {
+    let dataToInsert = {
+      employee_id: data.employee_id,
+      date: data.attendance_date,
+    } as any;
+
+    if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
+    if (data.check_out_time) dataToInsert["check_out_time"] = data.check_out_time;
+    if (work_status) dataToInsert["work_hours"] = work_status.working_hours_formattted;
+    if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
+    if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
+
+    const attendance = await prisma.attendance.create({
+      data: dataToInsert,
+    });
+    return attendance;
+  } catch (error: any) {
+    throw new Error(`Failed to add attendance: ${error.message}`);
+  }
+};
+
+export const attendanceById = async (attendance_id: number) => {
+  try {
+    const attendance = await prisma.attendance.findUnique({
+      where: {
+        id: attendance_id,
+      },
+    });
+    return attendance;
+  } catch (error: any) {
+    throw new Error(`Failed to fetch attendance by id: ${error.message}`);
+  }
+};
+
+export const updateAttendance = async (
+  data: UpdateAttendance,
+  work_status: any,
+  check_in_status: any
+) => {
+  try {
+    let dataToInsert = {
+      date: data.attendance_date,
+    } as any;
+
+    if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
+    if (data.check_out_time) dataToInsert["check_out_time"] = data.check_out_time;
+    if (work_status) dataToInsert["work_hours"] = work_status.working_hours_formattted;
+    if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
+    if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
+
+    const attendance = await prisma.attendance.update({
+      where: { id: data.attendance_id },
+      data: dataToInsert,
+    });
+    return attendance;
+  } catch (error: any) {
+    throw new Error(`Failed to update attendance: ${error.message}`);
   }
 };

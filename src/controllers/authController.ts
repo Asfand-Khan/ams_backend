@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  forgetPasswordSchema,
   loginSchema,
   sendOtpSchema,
   verifyOtpSchema,
@@ -7,6 +8,7 @@ import {
 import {
   comparePassword,
   generateOTP,
+  getUserByEmail,
   getUserByUsername,
   getUserMenus,
   verifyOTP,
@@ -151,6 +153,45 @@ export const verifyOtpHandler = async (
           menus,
         },
       ],
+    });
+  } catch (error: any) {
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Auth
+// Endpoint --> /api/v1/auth/forget-password
+// Description --> Send password to Employee
+export const forgetPasswordHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = forgetPasswordSchema.parse(req.body);
+
+    const user = await getUserByEmail(parsedData.employee_email);
+    if (!user) {
+      return res.status(400).json({
+        status: 0,
+        message: "User not found",
+        payload: [],
+      });
+    }
+
+    await sendEmail({
+      to: user.email,
+      subject: "Orio Attendance - Forget Password",
+      text: "Your password is: " + user.password_hash,
+    });
+
+    return res.status(200).json({
+      status: 1,
+      message: "Forgert password successfully",
+      payload: [],
     });
   } catch (error: any) {
     return res.status(500).json({
