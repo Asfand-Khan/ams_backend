@@ -185,7 +185,9 @@ export const employeeUpdateProfileSchema = z.object({
   dob: z
     .string({ required_error: "DOB is required" })
     .regex(dateRegex, "DOB must be in 'YYYY-MM-DD' format")
-    .refine(isValidPastOrTodayDate, "DOB cannot be in the future"),
+    .refine(isValidPastOrTodayDate, "DOB cannot be in the future")
+    .nullable()
+    .optional(),
   email: z
     .string({ invalid_type_error: "Email must be a string" })
     .email("Invalid email address")

@@ -50,13 +50,7 @@ enum DayStatus {
   leave
   weekend
   holiday
-  manual_present
   work_from_home
-  early_leave
-  on_time
-  early_go
-  overtime
-  half_day
 }
 
 enum DeviceType {

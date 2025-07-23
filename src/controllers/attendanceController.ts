@@ -126,21 +126,12 @@ export const checkOutHandler = async (
       parsedData.check_out_time
     );
 
-    const dayStatus = await getDayStatus(
-      attendance.check_in_status,
-      work_status.work_status,
-      work_status.working_hours
-    );
-
     const data = {
       ...parsedData,
-      dayStatus,
       checkoutStatus: work_status.work_status,
       workingHours: work_status.working_hours_formattted,
       attendance_id: attendance.id,
     };
-
-    console.log("final daata", data);
 
     const updatedAttendance = await markCheckOut(data);
 

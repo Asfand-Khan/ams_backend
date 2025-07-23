@@ -1,6 +1,10 @@
 import prisma from "../config/db";
 import { generateRandomHex } from "../utils/generateRandomHex";
-import { Employee, EmployeeUpdate } from "../validations/employeeValidations";
+import {
+  Employee,
+  EmployeeUpdate,
+  EmployeeUpdateProfile,
+} from "../validations/employeeValidations";
 
 export const getAllEmployees = async () => {
   try {
@@ -257,4 +261,44 @@ LEFT JOIN Employee tl ON t.team_lead_id = tl.id
 WHERE e.id = ${id}
 GROUP BY e.id;
   `;
+};
+
+export const updateEmployeeProfile = async (data: EmployeeUpdateProfile) => {
+  try {
+    let employeeData = {} as any;
+    let userData = {} as any;
+
+    if (data.fullname) employeeData.full_name = data.fullname;
+    if (data.fathername) employeeData.father_name = data.fathername;
+    if (data.email) {
+      employeeData.email = data.email;
+      userData.email = data.email;
+    }
+    if (data.phone) employeeData.phone = data.phone;
+    if (data.cnic) employeeData.cnic = data.cnic;
+    if (data.dob) employeeData.dob = new Date(data.dob);
+    if (data.address) employeeData.address = data.address;
+
+    const user = await prisma.user.findFirst({
+      where: { employee_id: data.employee_id },
+    });
+
+    await prisma.user.update({
+      data: userData,
+      where: {
+        id: user?.id,
+      },
+    });
+
+    const updatedEmployee = await prisma.employee.update({
+      data: employeeData,
+      where: {
+        id: data.employee_id,
+      },
+    });
+
+    return updatedEmployee;
+  } catch (error: any) {
+    throw new Error(`Failed to update employee profile: ${error.message}`);
+  }
 };

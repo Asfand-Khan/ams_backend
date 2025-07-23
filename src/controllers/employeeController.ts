@@ -4,6 +4,7 @@ import {
   employeeChangePasswordSchema,
   employeeProfileSchema,
   employeeSchema,
+  employeeUpdateProfileSchema,
 } from "../validations/employeeValidations";
 import {
   changeEmployeePassword,
@@ -15,6 +16,7 @@ import {
   getEmployeeByPhone,
   getEmployeeByUsername,
   getEmployeeProfileById,
+  updateEmployeeProfile,
 } from "../services/employeeServices";
 import { sendEmail } from "../utils/sendEmail";
 import { getSignUpTemplate } from "../utils/signUpTemplate";
@@ -208,6 +210,47 @@ export const getEmployeeProfileHandler = async (
       message: "Employee profile fetched successfully",
       payload: employee,
     });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+export const updateEmployeeProfileHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = employeeUpdateProfileSchema.parse(req.body);
+
+    const employee = await getEmployeeProfileById(parsedData.employee_id);
+    if (!employee) {
+      return res.status(404).json({
+        status: 0,
+        message: "Employee not found",
+        payload: [],
+      });
+    }
+
+    const updatedEmployee = await updateEmployeeProfile(parsedData);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Employee profile updated successfully",
+      payload: [updatedEmployee],
+    });
+    
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

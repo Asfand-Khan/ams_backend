@@ -144,7 +144,6 @@ export const markCheckOut = async (data: {
   checkoutStatus: WorkStatus;
   check_out_office_location: number;
   workingHours: string;
-  dayStatus: string;
   employee_id: number;
   attendance_date: string;
   attendance_id: number;
@@ -156,8 +155,7 @@ export const markCheckOut = async (data: {
         check_out_time: data.check_out_time,
         check_out_status: data.checkoutStatus,
         check_out_office_id: data.check_out_office_location,
-        work_hours: data.workingHours,
-        day_status: data.dayStatus as WorkStatus,
+        work_hours: data.workingHours
       },
     });
     return attendance;
@@ -239,6 +237,7 @@ export const getAttendance = async (data: Attendance) => {
 	          att.check_out_time,
 	          att.check_in_status,
 	          att.check_out_status,
+            att.day_status,
 	          att.work_hours,
 	          o1.name AS check_in_office,
 	          o2.name AS check_out_office
@@ -264,6 +263,7 @@ export const getAttendance = async (data: Attendance) => {
 	        att.check_out_time,
 	        att.check_in_status,
 	        att.check_out_status,
+          att.day_status,
 	        att.work_hours,
 	        o1.NAME AS check_in_office,
 	        o2.NAME AS check_out_office 
