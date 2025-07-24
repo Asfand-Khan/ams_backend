@@ -90,8 +90,8 @@ export const allLeaves = async (data: LeaveListing) => {
 	        l.created_at,
 	        l.updated_at 
         FROM
-	        devenv_ams.LEAVE l
-	      LEFT JOIN devenv_ams.LeaveType lt ON l.leave_type_id = lt.id 
+	        \`Leave\` l
+	      LEFT JOIN LeaveType lt ON l.leave_type_id = lt.id 
         WHERE
 	        l.is_active = 1 
 	      AND l.is_deleted = 0 

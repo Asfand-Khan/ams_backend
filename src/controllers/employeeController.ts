@@ -95,16 +95,16 @@ export const createEmployeeHandler = async (
     const newEmployee = await createEmployee(parsedEmployee);
 
     if (newEmployee) {
-      await sendEmail({
-        to: newEmployee.email,
-        subject: "Employee Registration",
-        html: getSignUpTemplate(
-          newEmployee.full_name,
-          newEmployee.username,
-          newEmployee.password,
-          "https://getorio.com/"
-        ),
-      });
+      // await sendEmail({
+      //   to: newEmployee.email,
+      //   subject: "Employee Registration",
+      //   html: getSignUpTemplate(
+      //     newEmployee.full_name,
+      //     newEmployee.username,
+      //     newEmployee.password,
+      //     "https://getorio.com/"
+      //   ),
+      // });
     }
 
     return res.status(201).json({
