@@ -91,7 +91,7 @@ export const getSingleLeaveHandler = async (
     return res.status(200).json({
       status: 1,
       message: "Single Leave fetched successfully",
-      payload: leave,
+      payload: [leave],
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
