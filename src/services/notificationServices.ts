@@ -68,7 +68,7 @@ export const allNotifications = async (data: AllNotification) => {
     } else {
       notifications = await prisma.notification.findMany();
     }
-    return allNotifications;
+    return notifications;
   } catch (error) {
     logger.error(`Error in fetching notifications : ${error}`);
     throw error;

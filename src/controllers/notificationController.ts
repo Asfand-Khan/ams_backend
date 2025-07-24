@@ -10,7 +10,6 @@ import {
   createNotification,
   singleNotification,
 } from "../services/notificationServices";
-import { getUserByEmployeeId } from "../services/authServices";
 
 // Module --> Notifications
 // Method --> POST (Protected)
@@ -63,7 +62,7 @@ export const getAllNotificationsHandler = async (
     return res.status(200).json({
       status: 1,
       message: "Notifications fetched successfully",
-      payload: [notification],
+      payload: notification,
     });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
