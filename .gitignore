@@ -1,6 +1,7 @@
 # Environment variables
 .env
 .env.local
+/src/oams-firebase.json
 
 # Dependencies
 /node_modules

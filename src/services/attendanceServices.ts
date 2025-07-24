@@ -1,6 +1,7 @@
 import prisma from "../config/db";
 import {
   Attendance,
+  AttendanceByDate,
   CheckIn,
   CreateAttendance,
   UpdateAttendance,
@@ -86,58 +87,6 @@ export const getEmployeeAttendance = async (
     throw new Error(`Failed to fetch employee attendance: ${error.message}`);
   }
 };
-export const getDayStatus = (
-  checkInStatus: string | null,
-  checkOutStatus: string | null,
-  workingHours: number | null
-) => {
-  if (!checkInStatus || !checkOutStatus || !workingHours)
-    throw new Error(
-      "Check-in status, check-out status, and working hours are required."
-    );
-
-  const normalizedCheckOutStatus =
-    checkOutStatus === "early_go" ? "early_leave" : checkOutStatus;
-
-  if (checkInStatus === "absent") {
-    return "absent";
-  } else if (
-    checkInStatus === "manual" ||
-    normalizedCheckOutStatus === "manual"
-  ) {
-    return "manual_present";
-  } else if (
-    (checkInStatus === "on_time" || checkInStatus === "late") &&
-    (normalizedCheckOutStatus === "on_time" ||
-      normalizedCheckOutStatus === "overtime") &&
-    workingHours >= 8
-  ) {
-    return "present";
-  } else if (
-    (checkInStatus === "on_time" || checkInStatus === "late") &&
-    normalizedCheckOutStatus === "early_leave" &&
-    workingHours <= 3.99
-  ) {
-    return "early_leave";
-  } else if (
-    checkInStatus === "on_time" &&
-    normalizedCheckOutStatus === "early_leave" &&
-    workingHours > 3.99 &&
-    workingHours < 8
-  ) {
-    return "early_leave";
-  } else if (
-    checkInStatus === "late" &&
-    normalizedCheckOutStatus === "early_leave" &&
-    workingHours >= 4 &&
-    workingHours < 8
-  ) {
-    return "half_day";
-  } else if (normalizedCheckOutStatus === "half_day" && workingHours <= 5) {
-    return "half_day";
-  }
-  return "present"; // Default case for unhandled scenarios
-};
 
 export const markCheckOut = async (data: {
   check_out_time: string;
@@ -155,7 +104,7 @@ export const markCheckOut = async (data: {
         check_out_time: data.check_out_time,
         check_out_status: data.checkoutStatus,
         check_out_office_id: data.check_out_office_location,
-        work_hours: data.workingHours
+        work_hours: data.workingHours,
       },
     });
     return attendance;
@@ -217,10 +166,7 @@ GROUP BY
 
 export const getAttendance = async (data: Attendance) => {
   try {
-    let attendance = null;
-
-    if (data.employee_id && data.start_date && data.end_date) {
-      attendance = await prisma.$queryRaw`
+    const attendance = await prisma.$queryRaw`
         WITH RECURSIVE date_series AS (
 	        SELECT DATE(${data.start_date}) AS date
 	        UNION ALL
@@ -252,30 +198,29 @@ export const getAttendance = async (data: Attendance) => {
           ORDER BY
 	          d.date;
       `;
-    } else {
-      attendance = await prisma.$queryRaw`
-        SELECT
-	        emp.id AS employee_id,
-	        emp.employee_code,
-	        emp.full_name,
-	        att.date,
-	        att.check_in_time,
-	        att.check_out_time,
-	        att.check_in_status,
-	        att.check_out_status,
-          att.day_status,
-	        att.work_hours,
-	        o1.NAME AS check_in_office,
-	        o2.NAME AS check_out_office 
-        FROM
-	        Employee emp
-	      LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = CURRENT_DATE
-	      LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
-	      LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id 
-        WHERE
-	        emp.is_deleted = FALSE
-      `;
-    }
+
+    // await prisma.$queryRaw`
+    //   SELECT
+    //     emp.id AS employee_id,
+    //     emp.employee_code,
+    //     emp.full_name,
+    //     att.date,
+    //     att.check_in_time,
+    //     att.check_out_time,
+    //     att.check_in_status,
+    //     att.check_out_status,
+    //     att.day_status,
+    //     att.work_hours,
+    //     o1.NAME AS check_in_office,
+    //     o2.NAME AS check_out_office
+    //   FROM
+    //     Employee emp
+    //   LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = CURRENT_DATE
+    //   LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
+    //   LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
+    //   WHERE
+    //     emp.is_deleted = FALSE
+    // `;
 
     return attendance;
   } catch (error: any) {
@@ -295,8 +240,10 @@ export const addAttendance = async (
     } as any;
 
     if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
-    if (data.check_out_time) dataToInsert["check_out_time"] = data.check_out_time;
-    if (work_status) dataToInsert["work_hours"] = work_status.working_hours_formattted;
+    if (data.check_out_time)
+      dataToInsert["check_out_time"] = data.check_out_time;
+    if (work_status)
+      dataToInsert["work_hours"] = work_status.working_hours_formattted;
     if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
     if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
 
@@ -333,8 +280,10 @@ export const updateAttendance = async (
     } as any;
 
     if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
-    if (data.check_out_time) dataToInsert["check_out_time"] = data.check_out_time;
-    if (work_status) dataToInsert["work_hours"] = work_status.working_hours_formattted;
+    if (data.check_out_time)
+      dataToInsert["check_out_time"] = data.check_out_time;
+    if (work_status)
+      dataToInsert["work_hours"] = work_status.working_hours_formattted;
     if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
     if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
 
@@ -347,3 +296,88 @@ export const updateAttendance = async (
     throw new Error(`Failed to update attendance: ${error.message}`);
   }
 };
+
+export const getAttendanceByDate = async (data: AttendanceByDate) => {
+  try {
+    const attendanceByDate = await prisma.$queryRaw`
+        SELECT
+          att.id,
+	        emp.id AS employee_id,
+	        emp.employee_code,
+	        emp.full_name,
+	        ${data.attendance_date} AS date,
+	        att.check_in_time,
+	        att.check_out_time,
+	        att.check_in_status,
+	        att.check_out_status,
+          att.day_status,
+	        att.work_hours,
+	        o1.NAME AS check_in_office,
+	        o2.NAME AS check_out_office 
+        FROM
+	        Employee emp
+	      LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = ${data.attendance_date}
+	      LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
+	      LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id 
+        WHERE
+	        emp.is_deleted = FALSE
+      `;
+
+    return attendanceByDate;
+  } catch (error: any) {
+    throw new Error(`Failed to fetch attendance by date: ${error.message}`);
+  }
+};
+
+// export const getDayStatus = (
+//   checkInStatus: string | null,
+//   checkOutStatus: string | null,
+//   workingHours: number | null
+// ) => {
+//   if (!checkInStatus || !checkOutStatus || !workingHours)
+//     throw new Error(
+//       "Check-in status, check-out status, and working hours are required."
+//     );
+
+//   const normalizedCheckOutStatus =
+//     checkOutStatus === "early_go" ? "early_leave" : checkOutStatus;
+
+//   if (checkInStatus === "absent") {
+//     return "absent";
+//   } else if (
+//     checkInStatus === "manual" ||
+//     normalizedCheckOutStatus === "manual"
+//   ) {
+//     return "manual_present";
+//   } else if (
+//     (checkInStatus === "on_time" || checkInStatus === "late") &&
+//     (normalizedCheckOutStatus === "on_time" ||
+//       normalizedCheckOutStatus === "overtime") &&
+//     workingHours >= 8
+//   ) {
+//     return "present";
+//   } else if (
+//     (checkInStatus === "on_time" || checkInStatus === "late") &&
+//     normalizedCheckOutStatus === "early_leave" &&
+//     workingHours <= 3.99
+//   ) {
+//     return "early_leave";
+//   } else if (
+//     checkInStatus === "on_time" &&
+//     normalizedCheckOutStatus === "early_leave" &&
+//     workingHours > 3.99 &&
+//     workingHours < 8
+//   ) {
+//     return "early_leave";
+//   } else if (
+//     checkInStatus === "late" &&
+//     normalizedCheckOutStatus === "early_leave" &&
+//     workingHours >= 4 &&
+//     workingHours < 8
+//   ) {
+//     return "half_day";
+//   } else if (normalizedCheckOutStatus === "half_day" && workingHours <= 5) {
+//     return "half_day";
+//   }
+//   return "present"; // Default case for unhandled scenarios
+// };

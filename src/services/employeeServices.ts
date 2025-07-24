@@ -225,6 +225,7 @@ export const getEmployeeProfileById = async (id: number) => {
     e.id AS employee_id,
     e.employee_code,
     e.full_name,
+    e.father_name,
     e.email,
     e.phone,
     e.cnic,

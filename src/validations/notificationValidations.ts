@@ -24,4 +24,22 @@ export const createNotificationSchema = z.object({
     .optional(),
 });
 
+export const allNotificationSchema = z.object({
+  employee_id: z
+    .number({ required_error: "Employee ID is required" })
+    .int({ message: "Employee ID must be an integer" })
+    .positive({ message: "Employee ID must be a positive number" })
+    .nullable()
+    .optional(),
+});
+
+export const singleNotificationSchema = z.object({
+  notification_id: z
+    .number({ required_error: "Notification ID is required" })
+    .int({ message: "Notification ID must be an integer" })
+    .positive({ message: "Notification ID must be a positive number" }),
+});
+
 export type CreateNotification = z.infer<typeof createNotificationSchema>;
+export type AllNotification = z.infer<typeof allNotificationSchema>;
+export type SingleNotification = z.infer<typeof singleNotificationSchema>;

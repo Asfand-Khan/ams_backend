@@ -1,5 +1,6 @@
 import prisma from "../config/db";
 import crypto from "crypto";
+import { FCMToken } from "../validations/authValidations";
 
 export const login = async () => {
   try {
@@ -28,7 +29,7 @@ export const getUserByUsername = (username: string) => {
 export const getUserByEmail = (email: string) => {
   try {
     return prisma.user.findUnique({
-      where: { email }
+      where: { email },
     });
   } catch (error: any) {
     throw new Error(`Failed to fetch user by email: ${error.message}`);
@@ -98,11 +99,32 @@ export const getUserMenus = async (userId: number) => {
 
 export const getUserByEmployeeId = async (employeeId: number) => {
   try {
-   return prisma.user.findFirst({
-    where: { employee_id: employeeId },
-  }); 
+    return prisma.user.findFirst({
+      where: { employee_id: employeeId },
+    });
   } catch (error: any) {
     throw new Error(`Failed to fetch user by employee ID: ${error.message}`);
-    
+  }
+};
+
+export const createToken = async (data: FCMToken, user_id: number) => {
+  try {
+    const exists = await prisma.fCMToken.findUnique({
+      where: { token: data.token },
+    });
+
+    let token = null;
+    if (!exists) {
+      token = await prisma.fCMToken.create({
+        data: {
+          token: data.token,
+          user: { connect: { id: user_id } },
+        },
+      });
+
+      return token;
+    }
+  } catch (error: any) {
+    throw new Error(`Failed to create FCM token: ${error.message}`);
   }
 };

@@ -9,6 +9,7 @@ import {
 import {
   changeEmployeePassword,
   createEmployee,
+  getAllEmployees,
   getEmployeeByCnic,
   getEmployeeByCode,
   getEmployeeByEmail,
@@ -250,7 +251,32 @@ export const updateEmployeeProfileHandler = async (
       message: "Employee profile updated successfully",
       payload: [updatedEmployee],
     });
-    
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+export const getAllEmployeesHandler = async (req: Request, res: Response) => {
+  try {
+    const employees = await getAllEmployees();
+
+    return res.status(200).json({
+      status: 1,
+      message: "All employees fetched successfully",
+      payload: employees,
+    });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import {
+  attendanceByDateSchema,
   attendanceSchema,
   attendanceSummarySchema,
   checkInSchema,
@@ -15,7 +16,7 @@ import {
   attendanceById,
   attendanceSummary,
   getAttendance,
-  getDayStatus,
+  getAttendanceByDate,
   getEmployeeAttendance,
   getEmployeeShift,
   ifCheckInExists,
@@ -292,6 +293,9 @@ export const addAttendanceHandler = async (
 ): Promise<any> => {
   try {
     const parsedData = createAttendanceSchema.parse(req.body);
+
+    console.log(parsedData);
+
     if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
       throw new Error(
         "Check in and check out time can not be null at the same time, one should atleast be provided."
@@ -312,6 +316,15 @@ export const addAttendanceHandler = async (
         message: "Employee not found",
         payload: [],
       });
+    }
+
+    const attendanceExists = await singleAttendance(
+      parsedData.employee_id,
+      parsedData.attendance_date
+    );
+
+    if (attendanceExists !== null) {
+      throw new Error("Attendance already exists");
     }
 
     const shift = await getEmployeeShift(parsedData.employee_id);
@@ -430,6 +443,40 @@ export const updateAttendanceHandler = async (
       payload: [updatedAttendance],
     });
     
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/attendances/by-date
+// Description --> Fetch the attendance by the date
+export const getAttendanceByDateHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = attendanceByDateSchema.parse(req.body);
+    const attendance = await getAttendanceByDate(parsedData);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Fetched attendance by date successfully",
+      payload: attendance,
+    });
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

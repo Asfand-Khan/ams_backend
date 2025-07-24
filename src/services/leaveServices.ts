@@ -40,17 +40,63 @@ export const createLeave = async (data: Leave, days: number) => {
 
 export const allLeaves = async (data: LeaveListing) => {
   try {
-    let whereClause = {
-      employee_id: data.employee_id,
-    } as any;
-
-    if (data.status) {
-      whereClause["status"] = data.status;
+    let leaves = null;
+    if (data.employee_id) {
+      leaves = await prisma.$queryRaw`
+        SELECT
+	        l.id AS leave_id,
+	        l.employee_id,
+	        l.leave_type_id,
+	        lt.NAME AS leave_type_name,
+	        l.start_date,
+	        l.end_date,
+	        l.total_days,
+	        l.reason,
+	        l.STATUS,
+	        l.applied_on,
+	        l.approved_by,
+	        l.approved_on,
+	        l.remarks,
+	        l.is_active,
+	        l.is_deleted,
+	        l.created_at,
+	        l.updated_at 
+        FROM
+	        devenv_ams.LEAVE l
+	      LEFT JOIN devenv_ams.LeaveType lt ON l.leave_type_id = lt.id 
+        WHERE
+	        l.is_active = 1 
+	      AND l.is_deleted = 0 
+	      AND l.employee_id = ${data.employee_id}    
+    `;
+    } else {
+      leaves = await prisma.$queryRaw`
+        SELECT
+	        l.id AS leave_id,
+	        l.employee_id,
+	        l.leave_type_id,
+	        lt.NAME AS leave_type_name,
+	        l.start_date,
+	        l.end_date,
+	        l.total_days,
+	        l.reason,
+	        l.STATUS,
+	        l.applied_on,
+	        l.approved_by,
+	        l.approved_on,
+	        l.remarks,
+	        l.is_active,
+	        l.is_deleted,
+	        l.created_at,
+	        l.updated_at 
+        FROM
+	        devenv_ams.LEAVE l
+	      LEFT JOIN devenv_ams.LeaveType lt ON l.leave_type_id = lt.id 
+        WHERE
+	        l.is_active = 1 
+	      AND l.is_deleted = 0 
+    `;
     }
-
-    const leaves = await prisma.leave.findMany({
-      where: whereClause,
-    });
 
     return leaves;
   } catch (error: any) {

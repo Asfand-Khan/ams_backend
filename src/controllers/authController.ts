@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  createFCMToken,
   forgetPasswordSchema,
   loginSchema,
   sendOtpSchema,
@@ -7,14 +8,17 @@ import {
 } from "../validations/authValidations";
 import {
   comparePassword,
+  createToken,
   generateOTP,
   getUserByEmail,
+  getUserByEmployeeId,
   getUserByUsername,
   getUserMenus,
   verifyOTP,
 } from "../services/authServices";
 import { sendEmail } from "../utils/sendEmail";
 import { generateToken } from "../utils/authHelpers";
+import z from "zod";
 
 // Module --> Auth
 // Endpoint --> /api/v1/auth/login
@@ -194,6 +198,49 @@ export const forgetPasswordHandler = async (
       payload: [],
     });
   } catch (error: any) {
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Auth
+// Endpoint --> /api/v1/auth/fcm-token
+// Description --> Create FCM Token
+export const createFCMTokenHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = createFCMToken.parse(req.body);
+
+    const user = await getUserByEmployeeId(parsedData.employee_id);
+    if (!user) {
+      return res.status(400).json({
+        status: 0,
+        message: "User associated with this employee does not exists",
+        payload: [],
+      });
+    }
+
+    const fcmToken = await createToken(parsedData, user.id);
+
+    return res.status(200).json({
+      status: 1,
+      message: "FCM Token created successfully",
+      payload: [fcmToken],
+    });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
     return res.status(500).json({
       status: 0,
       message: error.message,

@@ -78,39 +78,20 @@ export const attendanceSummarySchema = z.object({
     .regex(dateRegex, "End date must be in 'YYYY-MM-DD' format"),
 });
 
+export const attendanceSchema = z.object({
+  employee_id: z
+    .number({ required_error: "Employee ID is required" })
+    .int("Employee ID must be an integer")
+    .positive("Employee ID must be a positive number"),
 
-export const attendanceSchema = z
-  .object({
-    employee_id: z
-      .number({ required_error: "Employee ID is required" })
-      .int("Employee ID must be an integer")
-      .positive("Employee ID must be a positive number")
-      .nullable()
-      .optional(),
+  start_date: z
+    .string({ required_error: "Start date is required" })
+    .regex(dateRegex, "Start date must be in 'YYYY-MM-DD' format"),
 
-    start_date: z
-      .string({ required_error: "Start date is required" })
-      .regex(dateRegex, "Start date must be in 'YYYY-MM-DD' format")
-      .nullable()
-      .optional(),
-
-    end_date: z
-      .string({ required_error: "End date is required" })
-      .regex(dateRegex, "End date must be in 'YYYY-MM-DD' format")
-      .nullable()
-      .optional(),
-  })
-  .refine((data) => {
-    const { employee_id, start_date, end_date } = data;
-    const allProvided = employee_id && start_date && end_date;
-    const allEmpty = !employee_id && !start_date && !end_date;
-
-    return allProvided || allEmpty;
-  }, {
-    message:
-      "You must provide either all of Employee ID, Start Date, End Date — or none of them",
-  });
-
+  end_date: z
+    .string({ required_error: "End date is required" })
+    .regex(dateRegex, "End date must be in 'YYYY-MM-DD' format"),
+});
 
 export const createAttendanceSchema = z.object({
   employee_id: z
@@ -158,6 +139,12 @@ export const updateAttendanceSchema = z.object({
     .optional(),
 });
 
+export const attendanceByDateSchema = z.object({
+  attendance_date: z
+    .string({ required_error: "Attendance date is required" })
+    .regex(dateRegex, "Attendance date must be in 'YYYY-MM-DD' format"),
+});
+
 export type CheckIn = z.infer<typeof checkInSchema>;
 export type CheckOut = z.infer<typeof checkOutSchema>;
 export type SingleAttendance = z.infer<typeof singleAttendanceSchema>;
@@ -165,3 +152,4 @@ export type AttendanceSummary = z.infer<typeof attendanceSummarySchema>;
 export type Attendance = z.infer<typeof attendanceSchema>;
 export type CreateAttendance = z.infer<typeof createAttendanceSchema>;
 export type UpdateAttendance = z.infer<typeof updateAttendanceSchema>;
+export type AttendanceByDate = z.infer<typeof attendanceByDateSchema>;
