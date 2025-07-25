@@ -60,13 +60,17 @@ export const allNotifications = async (data: AllNotification) => {
 
         const notifications = await tx.notification.findMany({
           where: {
-            user_id: user?.id,
+            OR: [{ user_id: null }, { user_id: user?.id }],
           },
+          orderBy: { created_at: "desc" },
         });
+
         return notifications;
       });
     } else {
-      notifications = await prisma.notification.findMany();
+      notifications = await prisma.notification.findMany({
+        orderBy: { created_at: "desc" },
+      });
     }
     return notifications;
   } catch (error) {

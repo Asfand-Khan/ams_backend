@@ -4,6 +4,7 @@ import {
   checkInHandler,
   checkOutHandler,
   getAttendanceByDateHandler,
+  getAttendanceByIdHandler,
   getAttendanceHandler,
   getAttendanceSummaryHandler,
   getSingleAttendanceHandler,
@@ -14,6 +15,7 @@ const router = Router();
 
 router.post("/", getAttendanceHandler);
 router.post("/by-date", getAttendanceByDateHandler);
+router.post("/by-id", getAttendanceByIdHandler);
 router.post("/add", addAttendanceHandler);
 router.put("/update", updateAttendanceHandler);
 router.post("/check-in", checkInHandler);

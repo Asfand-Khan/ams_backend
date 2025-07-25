@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import {
   attendanceByDateSchema,
+  attendanceByIdSchema,
   attendanceSchema,
   attendanceSummarySchema,
   checkInSchema,
@@ -477,6 +478,49 @@ export const getAttendanceByDateHandler = async (
       message: "Fetched attendance by date successfully",
       payload: attendance,
     });
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        status: 0,
+        message: error.errors[0].message,
+        payload: [],
+      });
+    }
+
+    return res.status(500).json({
+      status: 0,
+      message: error.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/attendances/by-id
+// Description --> Update attendance
+export const getAttendanceByIdHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = attendanceByIdSchema.parse(req.body);
+
+    const attendance = await attendanceById(parsedData.attendance_id);
+    if (!attendance) {
+      return res.status(400).json({
+        status: 0,
+        message: "Attendance not found",
+        payload: [],
+      });
+    }
+
+    return res.status(200).json({
+      status: 1,
+      message: "Fetched attendance by ID successfully",
+      payload: [attendance],
+    });
+    
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({

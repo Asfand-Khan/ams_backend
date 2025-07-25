@@ -19,9 +19,8 @@ import {
   getEmployeeProfileById,
   updateEmployeeProfile,
 } from "../services/employeeServices";
-import { sendEmail } from "../utils/sendEmail";
-import { getSignUpTemplate } from "../utils/signUpTemplate";
 import { comparePassword, getUserByEmployeeId } from "../services/authServices";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Employee
 // Method --> POST (Protected)
@@ -251,18 +250,11 @@ export const updateEmployeeProfileHandler = async (
       message: "Employee profile updated successfully",
       payload: [updatedEmployee],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
-      status: 0,
-      message: error.message,
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      success: 0,
+      message: err.message,
       payload: [],
     });
   }

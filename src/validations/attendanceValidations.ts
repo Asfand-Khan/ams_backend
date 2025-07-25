@@ -145,6 +145,13 @@ export const attendanceByDateSchema = z.object({
     .regex(dateRegex, "Attendance date must be in 'YYYY-MM-DD' format"),
 });
 
+export const attendanceByIdSchema = z.object({
+  attendance_id: z
+    .number({ message: "Attendance ID is required" })
+    .int({ message: "Attendance ID must be an integer" })
+    .positive({ message: "Attendance ID must be a positive number" }),
+});
+
 export type CheckIn = z.infer<typeof checkInSchema>;
 export type CheckOut = z.infer<typeof checkOutSchema>;
 export type SingleAttendance = z.infer<typeof singleAttendanceSchema>;
@@ -153,3 +160,4 @@ export type Attendance = z.infer<typeof attendanceSchema>;
 export type CreateAttendance = z.infer<typeof createAttendanceSchema>;
 export type UpdateAttendance = z.infer<typeof updateAttendanceSchema>;
 export type AttendanceByDate = z.infer<typeof attendanceByDateSchema>;
+export type AttendanceById = z.infer<typeof attendanceByIdSchema>;
