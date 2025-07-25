@@ -42,8 +42,14 @@ export const employeeSchema = z.object({
   full_name: z
     .string({ required_error: "Full name is required" })
     .min(3, "Full name must be at least 3 characters")
-    .max(100, "Full name must be at most 100 characters")
-    .toLowerCase(),
+    .max(100, "Full name must be at most 100 characters"),
+
+  fathername: z
+    .string({ required_error: "Father name is required" })
+    .min(3, "Father name must be at least 3 characters")
+    .max(100, "Father name must be at most 100 characters")
+    .optional()
+    .nullable(),
 
   email: z
     .string({ required_error: "Email is required" })
@@ -109,10 +115,10 @@ export const employeeSchema = z.object({
   address: z
     .string()
     .max(1000, "Address must be at most 1000 characters")
-    .toLowerCase()
-    .optional(),
+    .toLowerCase(),
 
   status: statusEnum.default("active"),
+  
   menu_rights: z
     .array(
       z.object({

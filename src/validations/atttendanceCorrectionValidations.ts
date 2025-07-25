@@ -46,7 +46,9 @@ export const attendanceCorrectionListingSchema = z.object({
   employee_id: z
     .number({ required_error: "Employee ID is required" })
     .int("Employee ID must be an integer")
-    .positive("Employee ID must be a positive number"),
+    .positive("Employee ID must be a positive number")
+    .nullable()
+    .optional(),
   status: z.enum(["pending", "approved", "rejected"]).nullable().optional(),
 });
 

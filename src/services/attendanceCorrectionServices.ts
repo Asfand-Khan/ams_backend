@@ -34,12 +34,13 @@ export const attendanceCorrectionListing = async (
   data: AttendanceCorrectionListing
 ) => {
   try {
-    let whereClause = {
-      employee_id: data.employee_id,
-    } as any;
+    let whereClause = {} as any;
 
     if (data.status) {
       whereClause["status"] = data.status;
+    }
+    if (data.employee_id) {
+      whereClause["employee_id"] = data.employee_id;
     }
 
     const correction = await prisma.attendanceCorrectionRequest.findMany({
@@ -58,11 +59,12 @@ export const attendanceCorrectionSingle = async (
   data: SingleAttendanceCorrection
 ) => {
   try {
-    const correctionSingle = await prisma.attendanceCorrectionRequest.findUnique({
-      where: {
-        id: data.attendance_correction_id,
-      },
-    });
+    const correctionSingle =
+      await prisma.attendanceCorrectionRequest.findUnique({
+        where: {
+          id: data.attendance_correction_id,
+        },
+      });
 
     return correctionSingle;
   } catch (error: any) {

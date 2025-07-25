@@ -34,6 +34,10 @@ export const createEmployee = async (employee: Employee) => {
       data["address"] = employee.address;
     }
 
+    if (employee.fathername) {
+      data["father_name"] = employee.fathername;
+    }
+
     if (employee.cnic) {
       data["cnic"] = employee.cnic;
     }
