@@ -174,8 +174,6 @@ model User {
 
   @@index([email], name: "idx_email")
   @@index([username], name: "idx_username")
-
-  @@map("user")
 }
 
 model Employee {
@@ -243,8 +241,6 @@ model Employee {
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
-
-  @@map("employee")
 }
 
 model Menu {
@@ -268,8 +264,6 @@ model Menu {
   parent           Menu?           @relation("menu_children", fields: [parent_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
   children         Menu[]          @relation("menu_children")
   user_menu_rights UserMenuRight[]
-
-  @@map("menu")
 }
 
 model UserMenuRight {
@@ -288,8 +282,6 @@ model UserMenuRight {
   menu Menu @relation(fields: [menu_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, menu_id])
-
-  @@map("usermenuright")
 }
 
 model Department {
@@ -306,8 +298,6 @@ model Department {
   Team        Team[]
 
   @@index([name], name: "idx_name")
-
-  @@map("department")
 }
 
 model Designation {
@@ -325,8 +315,6 @@ model Designation {
   Employee   Employee[]
 
   @@index([title], name: "idx_title")
-
-  @@map("designation")
 }
 
 model OfficeLocation {
@@ -345,8 +333,6 @@ model OfficeLocation {
   check_out_attendance Attendance[] @relation("AttendanceCheckOutOffice")
 
   @@index([latitude, longitude], name: "idx_longitude_latitude")
-
-  @@map("officelocation")
 }
 
 model Shift {
@@ -364,8 +350,6 @@ model Shift {
   updated_at                    DateTime @updatedAt
 
   EmployeeShift EmployeeShift[]
-
-  @@map("shift")
 }
 
 model EmployeeShift {
@@ -385,8 +369,6 @@ model EmployeeShift {
   @@unique([employee_id, effective_from])
   @@index([employee_id])
   @@index([shift_id])
-
-  @@map("employeeshift")
 }
 
 model Team {
@@ -410,8 +392,6 @@ model Team {
   members TeamMember[]
 
   @@index([name], name: "idx_team_name")
-
-  @@map("team")
 }
 
 model TeamMember {
@@ -427,8 +407,6 @@ model TeamMember {
   employee Employee @relation(fields: [employee_id], references: [id], onDelete: Cascade)
 
   @@unique([team_id, employee_id])
-
-  @@map("teammember")
 }
 
 model Holiday {
@@ -442,8 +420,6 @@ model Holiday {
   updated_at   DateTime @updatedAt
 
   @@index([holiday_date], name: "idx_holiday_date")
-
-  @@map("holiday")
 }
 
 model OfficeWifiNetwork {
@@ -455,8 +431,6 @@ model OfficeWifiNetwork {
   is_deleted Boolean  @default(false)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-
-  @@map("officewifinetwork")
 }
 
 model Attendance {
@@ -493,8 +467,6 @@ model Attendance {
   @@unique([employee_id, date])
   @@index([date], name: "idx_date")
   @@index([employee_id, date], name: "idx_employee_date")
-
-  @@map("attendance")
 }
 
 model Leave {
@@ -522,8 +494,6 @@ model Leave {
   approver Employee? @relation("EmployeeLeaveApprover", fields: [approved_by], references: [id])
 
   @@index([employee_id, status])
-
-  @@map("leave")
 }
 
 model EmployeeLeaveQuota {
@@ -541,8 +511,6 @@ model EmployeeLeaveQuota {
   leave_type LeaveType @relation(fields: [leave_type_id], references: [id], onDelete: Cascade)
 
   @@unique([employee_id, leave_type_id, year])
-
-  @@map("employeeleavequota")
 }
 
 model LeaveType {
@@ -555,8 +523,6 @@ model LeaveType {
   updated_at         DateTime             @updatedAt
   EmployeeLeaveQuota EmployeeLeaveQuota[]
   Leave              Leave[]
-
-  @@map("leavetype")
 }
 
 model AttendanceCorrectionRequest {
@@ -591,8 +557,6 @@ model AttendanceCorrectionRequest {
 
   @@index([employee_id, attendance_date], name: "idx_employee_date")
   @@index([status], name: "idx_status")
-
-  @@map("attendancecorrectionrequest")
 }
 
 model AssetComplaintRequest {
@@ -621,8 +585,6 @@ model AssetComplaintRequest {
 
   @@index([employee_id, status])
   @@index([category, asset_type])
-
-  @@map("assetcomplaintrequest")
 }
 
 model Notification {
@@ -643,8 +605,6 @@ model Notification {
 
   @@index([user_id, status])
   @@index([broadcast])
-
-  @@map("notification")
 }
 
 model FCMToken {
@@ -657,8 +617,6 @@ model FCMToken {
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
-
-  @@map("fcmtoken")
 }
 
 // PUT LOGS TABLES HERE UNDER THIS COMMENT
@@ -675,6 +633,4 @@ model AllActivityLog {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  @@map("allactivitylog")
 }
