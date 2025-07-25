@@ -2,44 +2,36 @@ import prisma from "../config/db";
 import { Team, TeamUpdate } from "../validations/teamValidations";
 
 export const getAllTeams = async () => {
-  try {
-    const allTeams = await prisma.team.findMany({
-      where: {
-        is_deleted: false,
-      },
-    });
-    return allTeams;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch all Teams: ${error.message}`);
-  }
+  const allTeams = await prisma.team.findMany({
+    where: {
+      is_deleted: false,
+    },
+  });
+  return allTeams;
 };
 
 export const createTeam = async (team: Team) => {
-  try {
-    const data: any = {
-      name: team.name,
-      team_lead_id: team.team_lead_id,
-      department_id: team.department_id,
-    };
+  const data: any = {
+    name: team.name,
+    department_id: team.department_id,
+  };
 
-    if (team.description) data.description = team.description;
+  if (team.description) data.description = team.description;
+  if (team.team_lead_id) data.team_lead_id = team.team_lead_id;
 
-    const newTeam = await prisma.team.create({ data });
-    return newTeam;
-  } catch (error: any) {
-    throw new Error(`Failed to create a team: ${error.message}`);
-  }
+  const newTeam = await prisma.team.create({ data });
+  return newTeam;
 };
 
 export const updateTeam = async (team: TeamUpdate) => {
   try {
     const data: any = {
       name: team.name,
-      team_lead_id: team.team_lead_id,
       department_id: team.department_id,
     };
 
     if (team.description) data.description = team.description;
+    if (team.team_lead_id) data.team_lead_id = team.team_lead_id;
 
     const updatedTeam = await prisma.team.update({
       where: {

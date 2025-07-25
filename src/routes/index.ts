@@ -11,6 +11,7 @@ import assetComplaintRoutes from "./assetComplaintRoutes";
 import wifiNetworkRoutes from "./officeWifiNetworkRoutes";
 import menuRoutes from "./menuRoutes";
 import notificationRoutes from "./notificationsRoutes";
+import teamRoutes from "./teamRoutes";
 
 const router = Router();
 
@@ -26,6 +27,7 @@ router.use("/asset-complaints", assetComplaintRoutes);
 router.use("/wifi-networks", wifiNetworkRoutes);
 router.use("/menus", menuRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/teams", teamRoutes);
 
 router.get("/", (req, res) => {
   const dateObj = new Date();

@@ -23,7 +23,9 @@ export const teamSchema = z.object({
       invalid_type_error: "Team lead ID must be a number.",
     })
     .int({ message: "Team lead ID must be an integer." })
-    .positive({ message: "Team lead ID must be a positive integer." }),
+    .positive({ message: "Team lead ID must be a positive integer." })
+    .optional()
+    .nullable(),
 
   department_id: z
     .number({
@@ -42,5 +44,15 @@ export const teamUpdateSchema = teamSchema.extend({
     .int("Team ID must be an integer"),
 });
 
+export const singleTeamSchema = z.object({
+  team_id: z
+    .number({
+      invalid_type_error: "Team ID must be a number.",
+    })
+    .int({ message: "Team ID must be an integer." })
+    .positive({ message: "Team ID must be a positive integer." }),
+});
+
 export type Team = z.infer<typeof teamSchema>;
 export type TeamUpdate = z.infer<typeof teamUpdateSchema>;
+export type SingleTeam = z.infer<typeof singleTeamSchema>;
