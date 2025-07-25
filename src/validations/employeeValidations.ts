@@ -114,8 +114,7 @@ export const employeeSchema = z.object({
 
   address: z
     .string()
-    .max(1000, "Address must be at most 1000 characters")
-    .toLowerCase(),
+    .max(1000, "Address must be at most 1000 characters"),
 
   status: statusEnum.default("active"),
   
