@@ -45,6 +45,18 @@ export const attendanceCorrectionListing = async (
 
     const correction = await prisma.attendanceCorrectionRequest.findMany({
       where: whereClause,
+      include:{
+        employee:{
+          select:{
+            full_name: true
+          }
+        },
+        reviewer:{
+          select:{
+            full_name: true
+          }
+        }
+      },
     });
 
     return correction;
