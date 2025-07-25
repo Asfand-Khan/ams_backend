@@ -1,8 +1,16 @@
 import { Request, Response } from "express";
-import { z } from "zod";
-import { createDepartment, getAllDepartments, getDepartmentById, getDepartmentByName, updateDepartment } from "../services/departmentServices";
-import { DepartmentSchema, DepartmentUpdateSchema } from "../validations/departmentValidations";
+import {
+  createDepartment,
+  getDepartmentById,
+  getDepartmentByName,
+  updateDepartment,
+} from "../services/departmentServices";
+import {
+  DepartmentSchema,
+  DepartmentUpdateSchema,
+} from "../validations/departmentValidations";
 import { getAllOfficeLocations } from "../services/officeLocationServices";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Office Locations
 // Method --> GET (Protected)
@@ -19,10 +27,11 @@ export const getAllOfficeLocationsHandler = async (
       message: "Office locations fetched successfully",
       payload: locations,
     });
-  } catch (error: any) {
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -39,9 +48,7 @@ export const createDepartmentHandler = async (
   try {
     const parsedDepartment = DepartmentSchema.parse(req.body);
 
-    const departmentByName = await getDepartmentByName(
-      parsedDepartment.name
-    );
+    const departmentByName = await getDepartmentByName(parsedDepartment.name);
 
     if (departmentByName) {
       return res.status(400).json({
@@ -58,18 +65,11 @@ export const createDepartmentHandler = async (
       message: "Department created successfully",
       payload: [newDepartment],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -101,18 +101,11 @@ export const getSingleDepartmentHandler = async (
       message: "Fetched single department successfully",
       payload: [singleDepartment],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -136,18 +129,11 @@ export const updateDepartmentHandler = async (
       message: "Department updated successfully",
       payload: [updatedDepartment],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

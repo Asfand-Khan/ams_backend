@@ -1,7 +1,18 @@
 import { Request, Response } from "express";
-import { z } from "zod";
-import { leaveListingSchema, leaveSchema, leaveSummarySchema, singleLeaveSchema } from "../validations/leaveValidations";
-import { allLeaves, calculateDays, createLeave, leaveSummary, singleLeave } from "../services/leaveServices";
+import {
+  leaveListingSchema,
+  leaveSchema,
+  leaveSummarySchema,
+  singleLeaveSchema,
+} from "../validations/leaveValidations";
+import {
+  allLeaves,
+  calculateDays,
+  createLeave,
+  leaveSummary,
+  singleLeave,
+} from "../services/leaveServices";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Leave
 // Method --> POST (Protected)
@@ -23,18 +34,11 @@ export const createLeaveHandler = async (
       message: "Leave created successfully",
       payload: [newLeave],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -58,18 +62,11 @@ export const getAllLeavesHandler = async (
       message: "All Leaves fetched successfully",
       payload: leaves,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -93,23 +90,15 @@ export const getSingleLeaveHandler = async (
       message: "Single Leave fetched successfully",
       payload: [leave],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
 };
-
 
 // Module --> Leave
 // Method --> POST (Protected)
@@ -129,18 +118,11 @@ export const leaveSummaryHandler = async (
       message: "Leave summary fetched successfully",
       payload: summary,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

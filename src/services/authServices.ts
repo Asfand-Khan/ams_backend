@@ -2,46 +2,21 @@ import prisma from "../config/db";
 import crypto from "crypto";
 import { FCMToken } from "../validations/authValidations";
 
-export const login = async () => {
-  try {
-    const allDepartments = await prisma.department.findMany({
-      where: {
-        is_deleted: false,
-      },
-    });
-    return allDepartments;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch all Departments: ${error.message}`);
-  }
-};
-
 export const getUserByUsername = (username: string) => {
-  try {
-    return prisma.user.findUnique({
-      where: { username },
-      include: { employee: true },
-    });
-  } catch (error: any) {
-    throw new Error(`Failed to fetch user by username: ${error.message}`);
-  }
+  return prisma.user.findUnique({
+    where: { username },
+    include: { employee: true },
+  });
 };
 
 export const getUserByEmail = (email: string) => {
-  try {
-    return prisma.user.findUnique({
-      where: { email },
-    });
-  } catch (error: any) {
-    throw new Error(`Failed to fetch user by email: ${error.message}`);
-  }
+  return prisma.user.findUnique({
+    where: { email },
+  });
 };
 
 export const comparePassword = (password: string, oldPassword: string) => {
-  try {
-    return password === oldPassword;
-  } catch (error: any) {
-    throw new Error(`Failed to compare password: ${error.message}`);
-  }
+  return password === oldPassword;
 };
 
 export const generateOTP = async (username: string) => {
@@ -98,33 +73,25 @@ export const getUserMenus = async (userId: number) => {
 };
 
 export const getUserByEmployeeId = async (employeeId: number) => {
-  try {
-    return prisma.user.findFirst({
-      where: { employee_id: employeeId },
-    });
-  } catch (error: any) {
-    throw new Error(`Failed to fetch user by employee ID: ${error.message}`);
-  }
+  return prisma.user.findFirst({
+    where: { employee_id: employeeId },
+  });
 };
 
 export const createToken = async (data: FCMToken, user_id: number) => {
-  try {
-    const exists = await prisma.fCMToken.findUnique({
-      where: { token: data.token },
+  const exists = await prisma.fCMToken.findUnique({
+    where: { token: data.token },
+  });
+
+  let token = null;
+  if (!exists) {
+    token = await prisma.fCMToken.create({
+      data: {
+        token: data.token,
+        user: { connect: { id: user_id } },
+      },
     });
 
-    let token = null;
-    if (!exists) {
-      token = await prisma.fCMToken.create({
-        data: {
-          token: data.token,
-          user: { connect: { id: user_id } },
-        },
-      });
-
-      return token;
-    }
-  } catch (error: any) {
-    throw new Error(`Failed to create FCM token: ${error.message}`);
+    return token;
   }
 };

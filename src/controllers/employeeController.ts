@@ -21,6 +21,8 @@ import {
 } from "../services/employeeServices";
 import { comparePassword, getUserByEmployeeId } from "../services/authServices";
 import { handleAppError } from "../utils/appErrorHandler";
+import { sendEmail } from "../utils/sendEmail";
+import { getSignUpTemplate } from "../utils/signUpTemplate";
 
 // Module --> Employee
 // Method --> POST (Protected)
@@ -94,16 +96,16 @@ export const createEmployeeHandler = async (
     const newEmployee = await createEmployee(parsedEmployee);
 
     if (newEmployee) {
-      // await sendEmail({
-      //   to: newEmployee.email,
-      //   subject: "Employee Registration",
-      //   html: getSignUpTemplate(
-      //     newEmployee.full_name,
-      //     newEmployee.username,
-      //     newEmployee.password,
-      //     "https://getorio.com/"
-      //   ),
-      // });
+      await sendEmail({
+        to: newEmployee.email,
+        subject: "Employee Registration",
+        html: getSignUpTemplate(
+          newEmployee.full_name,
+          newEmployee.username,
+          newEmployee.password,
+          "https://getorio.com/"
+        ),
+      });
     }
 
     return res.status(201).json({
@@ -111,18 +113,11 @@ export const createEmployeeHandler = async (
       message: "Employee created successfully",
       payload: [newEmployee],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -172,18 +167,11 @@ export const changeEmployeePasswordHandler = async (
       message: "Employee password changed successfully",
       payload: [employee],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -210,18 +198,11 @@ export const getEmployeeProfileHandler = async (
       message: "Employee profile fetched successfully",
       payload: employee,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -263,24 +244,16 @@ export const updateEmployeeProfileHandler = async (
 export const getAllEmployeesHandler = async (req: Request, res: Response) => {
   try {
     const employees = await getAllEmployees();
-
     return res.status(200).json({
       status: 1,
       message: "All employees fetched successfully",
       payload: employees,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

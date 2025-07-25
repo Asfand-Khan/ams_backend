@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { getAllOfficeWifiNetworks } from "../services/officeWifiNetwork";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Wifi Network
 // Method --> POST (Protected)
@@ -17,10 +18,11 @@ export const getAllWifiNetworksHandler = async (
       message: "Wifi networks fetched successfully",
       payload: networks,
     });
-  } catch (error: any) {
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

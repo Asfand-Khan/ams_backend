@@ -18,7 +18,7 @@ import {
 } from "../services/authServices";
 import { sendEmail } from "../utils/sendEmail";
 import { generateToken } from "../utils/authHelpers";
-import z from "zod";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Auth
 // Endpoint --> /api/v1/auth/login
@@ -60,10 +60,11 @@ export const loginHandler = async (
       message: "Login successfully",
       payload: [{ username: userByUsername.username }],
     });
-  } catch (error: any) {
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -100,10 +101,11 @@ export const sendOtpHandler = async (
       message: "OTP sent successfully",
       payload: [],
     });
-  } catch (error: any) {
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -158,10 +160,11 @@ export const verifyOtpHandler = async (
         },
       ],
     });
-  } catch (error: any) {
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -197,10 +200,11 @@ export const forgetPasswordHandler = async (
       message: "Forgert password successfully",
       payload: [],
     });
-  } catch (error: any) {
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -232,18 +236,11 @@ export const createFCMTokenHandler = async (
       message: "FCM Token created successfully",
       payload: [fcmToken],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

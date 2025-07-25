@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { assetComplaintRequestCreateSchema, assetComplaintRequestListingSchema, assetComplaintRequestSingleSchema } from "../validations/assetComplainValidations";
 import { assetComplaintListing, assetComplaintSingle, createAssetComplaint } from "../services/assetComplaintServices";
-import z from "zod";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Asset Complaint
 // Method --> POST (Protected)
@@ -21,18 +21,11 @@ export const createAssetComplaintHandler = async (
       message: "Asset complaint created successfully",
       payload: [complaint],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -57,18 +50,11 @@ export const getAllAssetComplaintHandler = async (
       message: "Asset complaints fetched successfully",
       payload: complaints,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -92,18 +78,11 @@ export const getSingleAssetComplaintHandler = async (
       message: "Asset complaint fetched successfully",
       payload: complaint,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

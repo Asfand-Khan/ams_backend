@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { allMenus } from "../services/menuServices";
-
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Menu
 // Method --> GET (Protected)
@@ -17,10 +17,11 @@ export const getAllMenusHandler = async (
       message: "All menus fetched successfully",
       payload: menus,
     });
-  } catch (error: any) {
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

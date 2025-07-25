@@ -15,27 +15,23 @@ type WorkStatus =
   | "overtime";
 
 export const getEmployeeShift = async (employee_id: number) => {
-  try {
-    const result = await prisma.$transaction(async (tx) => {
-      const employeeShift = await tx.employeeShift.findFirst({
-        where: { employee_id },
-      });
-
-      if (!employeeShift) return null;
-
-      const shift = await tx.shift.findUnique({
-        where: {
-          id: employeeShift.shift_id,
-        },
-      });
-
-      return shift;
+  const result = await prisma.$transaction(async (tx) => {
+    const employeeShift = await tx.employeeShift.findFirst({
+      where: { employee_id },
     });
 
-    return result;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch employee shift: ${error.message}`);
-  }
+    if (!employeeShift) return null;
+
+    const shift = await tx.shift.findUnique({
+      where: {
+        id: employeeShift.shift_id,
+      },
+    });
+
+    return shift;
+  });
+
+  return result;
 };
 
 export const ifCheckInExists = async (
@@ -55,37 +51,29 @@ export const markCheckIn = async (
   data: CheckIn,
   checkInStatus: "on_time" | "late"
 ) => {
-  try {
-    const attendance = await prisma.attendance.create({
-      data: {
-        employee_id: data.employee_id,
-        date: data.attendance_date,
-        check_in_time: data.check_in_time,
-        check_in_status: checkInStatus,
-        check_in_office_id: data.check_in_office_location,
-      },
-    });
-    return attendance;
-  } catch (error: any) {
-    throw new Error(`Failed to mark check-in: ${error.message}`);
-  }
+  const attendance = await prisma.attendance.create({
+    data: {
+      employee_id: data.employee_id,
+      date: data.attendance_date,
+      check_in_time: data.check_in_time,
+      check_in_status: checkInStatus,
+      check_in_office_id: data.check_in_office_location,
+    },
+  });
+  return attendance;
 };
 
 export const getEmployeeAttendance = async (
   employee_id: number,
   date: string
 ) => {
-  try {
-    const employeeAttendance = await prisma.attendance.findFirst({
-      where: {
-        employee_id,
-        date,
-      },
-    });
-    return employeeAttendance;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch employee attendance: ${error.message}`);
-  }
+  const employeeAttendance = await prisma.attendance.findFirst({
+    where: {
+      employee_id,
+      date,
+    },
+  });
+  return employeeAttendance;
 };
 
 export const markCheckOut = async (data: {
@@ -97,34 +85,26 @@ export const markCheckOut = async (data: {
   attendance_date: string;
   attendance_id: number;
 }) => {
-  try {
-    const attendance = await prisma.attendance.update({
-      where: { id: data.attendance_id },
-      data: {
-        check_out_time: data.check_out_time,
-        check_out_status: data.checkoutStatus,
-        check_out_office_id: data.check_out_office_location,
-        work_hours: data.workingHours,
-      },
-    });
-    return attendance;
-  } catch (error: any) {
-    throw new Error(`Failed to mark check-out: ${error.message}`);
-  }
+  const attendance = await prisma.attendance.update({
+    where: { id: data.attendance_id },
+    data: {
+      check_out_time: data.check_out_time,
+      check_out_status: data.checkoutStatus,
+      check_out_office_id: data.check_out_office_location,
+      work_hours: data.workingHours,
+    },
+  });
+  return attendance;
 };
 
 export const singleAttendance = async (employee_id: number, date: string) => {
-  try {
-    const attendance = await prisma.attendance.findFirst({
-      where: {
-        employee_id,
-        date,
-      },
-    });
-    return attendance;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch single attendance: ${error.message}`);
-  }
+  const attendance = await prisma.attendance.findFirst({
+    where: {
+      employee_id,
+      date,
+    },
+  });
+  return attendance;
 };
 
 export const attendanceSummary = async (
@@ -132,8 +112,7 @@ export const attendanceSummary = async (
   start_date: string,
   end_date: string
 ) => {
-  try {
-    const query = `
+  const query = `
 SELECT 
   a.employee_id,
   SUM(CASE WHEN a.day_status NOT IN ('weekend', 'holiday') THEN 1 ELSE 0 END) AS total_days,
@@ -157,16 +136,12 @@ GROUP BY
   a.employee_id;
 `;
 
-    const attendanceSummary = await prisma.$queryRawUnsafe(query);
-    return attendanceSummary;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch attendance: ${error.message}`);
-  }
+  const attendanceSummary = await prisma.$queryRawUnsafe(query);
+  return attendanceSummary;
 };
 
 export const getAttendance = async (data: Attendance) => {
-  try {
-    const attendance = await prisma.$queryRaw`
+  const attendance = await prisma.$queryRaw`
         WITH RECURSIVE date_series AS (
 	        SELECT DATE(${data.start_date}) AS date
 	        UNION ALL
@@ -199,33 +174,30 @@ export const getAttendance = async (data: Attendance) => {
 	          d.date;
       `;
 
-    // await prisma.$queryRaw`
-    //   SELECT
-    //     emp.id AS employee_id,
-    //     emp.employee_code,
-    //     emp.full_name,
-    //     att.date,
-    //     att.check_in_time,
-    //     att.check_out_time,
-    //     att.check_in_status,
-    //     att.check_out_status,
-    //     att.day_status,
-    //     att.work_hours,
-    //     o1.NAME AS check_in_office,
-    //     o2.NAME AS check_out_office
-    //   FROM
-    //     Employee emp
-    //   LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = CURRENT_DATE
-    //   LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
-    //   LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
-    //   WHERE
-    //     emp.is_deleted = FALSE
-    // `;
+  // await prisma.$queryRaw`
+  //   SELECT
+  //     emp.id AS employee_id,
+  //     emp.employee_code,
+  //     emp.full_name,
+  //     att.date,
+  //     att.check_in_time,
+  //     att.check_out_time,
+  //     att.check_in_status,
+  //     att.check_out_status,
+  //     att.day_status,
+  //     att.work_hours,
+  //     o1.NAME AS check_in_office,
+  //     o2.NAME AS check_out_office
+  //   FROM
+  //     Employee emp
+  //   LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = CURRENT_DATE
+  //   LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
+  //   LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
+  //   WHERE
+  //     emp.is_deleted = FALSE
+  // `;
 
-    return attendance;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch attendance: ${error.message}`);
-  }
+  return attendance;
 };
 
 export const addAttendance = async (
@@ -233,40 +205,31 @@ export const addAttendance = async (
   work_status: any,
   check_in_status: any
 ) => {
-  try {
-    let dataToInsert = {
-      employee_id: data.employee_id,
-      date: data.attendance_date,
-    } as any;
+  let dataToInsert = {
+    employee_id: data.employee_id,
+    date: data.attendance_date,
+  } as any;
 
-    if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
-    if (data.check_out_time)
-      dataToInsert["check_out_time"] = data.check_out_time;
-    if (work_status)
-      dataToInsert["work_hours"] = work_status.working_hours_formattted;
-    if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
-    if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
+  if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
+  if (data.check_out_time) dataToInsert["check_out_time"] = data.check_out_time;
+  if (work_status)
+    dataToInsert["work_hours"] = work_status.working_hours_formattted;
+  if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
+  if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
 
-    const attendance = await prisma.attendance.create({
-      data: dataToInsert,
-    });
-    return attendance;
-  } catch (error: any) {
-    throw new Error(`Failed to add attendance: ${error.message}`);
-  }
+  const attendance = await prisma.attendance.create({
+    data: dataToInsert,
+  });
+  return attendance;
 };
 
 export const attendanceById = async (attendance_id: number) => {
-  try {
-    const attendance = await prisma.attendance.findUnique({
-      where: {
-        id: attendance_id,
-      },
-    });
-    return attendance;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch attendance by id: ${error.message}`);
-  }
+  const attendance = await prisma.attendance.findUnique({
+    where: {
+      id: attendance_id,
+    },
+  });
+  return attendance;
 };
 
 export const updateAttendance = async (
@@ -274,32 +237,26 @@ export const updateAttendance = async (
   work_status: any,
   check_in_status: any
 ) => {
-  try {
-    let dataToInsert = {
-      date: data.attendance_date,
-    } as any;
+  let dataToInsert = {
+    date: data.attendance_date,
+  } as any;
 
-    if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
-    if (data.check_out_time)
-      dataToInsert["check_out_time"] = data.check_out_time;
-    if (work_status)
-      dataToInsert["work_hours"] = work_status.working_hours_formattted;
-    if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
-    if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
+  if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
+  if (data.check_out_time) dataToInsert["check_out_time"] = data.check_out_time;
+  if (work_status)
+    dataToInsert["work_hours"] = work_status.working_hours_formattted;
+  if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
+  if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
 
-    const attendance = await prisma.attendance.update({
-      where: { id: data.attendance_id },
-      data: dataToInsert,
-    });
-    return attendance;
-  } catch (error: any) {
-    throw new Error(`Failed to update attendance: ${error.message}`);
-  }
+  const attendance = await prisma.attendance.update({
+    where: { id: data.attendance_id },
+    data: dataToInsert,
+  });
+  return attendance;
 };
 
 export const getAttendanceByDate = async (data: AttendanceByDate) => {
-  try {
-    const attendanceByDate = await prisma.$queryRaw`
+  const attendanceByDate = await prisma.$queryRaw`
         SELECT
           att.id,
 	        emp.id AS employee_id,
@@ -323,10 +280,7 @@ export const getAttendanceByDate = async (data: AttendanceByDate) => {
 	        emp.is_deleted = FALSE
       `;
 
-    return attendanceByDate;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch attendance by date: ${error.message}`);
-  }
+  return attendanceByDate;
 };
 
 // export const getDayStatus = (

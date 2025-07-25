@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { z } from "zod";
 import {
   allNotificationSchema,
   createNotificationSchema,
@@ -10,6 +9,7 @@ import {
   createNotification,
   singleNotification,
 } from "../services/notificationServices";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Notifications
 // Method --> POST (Protected)
@@ -29,18 +29,11 @@ export const createNotificationHandler = async (
       message: "Notification created successfully",
       payload: [notification],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -64,18 +57,11 @@ export const getAllNotificationsHandler = async (
       message: "Notifications fetched successfully",
       payload: notification,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -99,18 +85,11 @@ export const getSingleNotificationHandler = async (
       message: "Single notification fetched successfully",
       payload: [notification],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

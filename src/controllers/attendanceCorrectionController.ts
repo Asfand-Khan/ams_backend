@@ -1,4 +1,3 @@
-import z from "zod";
 import { Request, Response } from "express";
 import {
   attendanceCorrectionCreateSchema,
@@ -11,6 +10,7 @@ import {
   attendanceCorrectionSingle,
   createAttendanceCorrection,
 } from "../services/attendanceCorrectionServices";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Attendance Correction
 // Method --> POST (Protected)
@@ -44,18 +44,11 @@ export const createAttendanceCorrectionHandler = async (
       message: "Attendance correction created successfully",
       payload: [correction],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -79,20 +72,13 @@ export const getAllAttendanceCorrectionHandler = async (
       message: "Attendance correction fetched successfully",
       payload: correctionListing,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
+  } catch (error) {
+      const err = handleAppError(error);
+      return res.status(err.status).json({
         status: 0,
-        message: error.errors[0].message,
+        message: err.message,
         payload: [],
       });
-    }
-
-    return res.status(500).json({
-      status: 0,
-      message: error.message,
-      payload: [],
-    });
   }
 };
 
@@ -114,18 +100,11 @@ export const getSingleAttendanceCorrectionHandler = async (
       message: "Single attendance correction fetched successfully",
       payload: [correctionSingle],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

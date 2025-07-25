@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { z } from "zod";
 import {
   attendanceByDateSchema,
   attendanceByIdSchema,
@@ -28,6 +27,7 @@ import {
 } from "../services/attendanceServices";
 import { getCheckInStatus } from "../utils/getCheckInStatus";
 import { getWorkStatus } from "../utils/getWorkStatusAndHours";
+import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Attendance
 // Method --> GET (Protected)
@@ -77,18 +77,11 @@ export const checkInHandler = async (
       message: "Employee checked-in successfully",
       payload: [attendance],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -142,18 +135,11 @@ export const checkOutHandler = async (
       message: "Employee checked-out successfully",
       payload: [updatedAttendance],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -187,18 +173,11 @@ export const getSingleAttendanceHandler = async (
       message: "Fetched single attendance successfully",
       payload: [attendance],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -225,18 +204,11 @@ export const getAttendanceSummaryHandler = async (
       message: "Fetched attendance summary successfully",
       payload: attSummary,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -267,18 +239,11 @@ export const getAttendanceHandler = async (
       message: "Fetched attendance successfully",
       payload: attendance,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -294,8 +259,6 @@ export const addAttendanceHandler = async (
 ): Promise<any> => {
   try {
     const parsedData = createAttendanceSchema.parse(req.body);
-
-    console.log(parsedData);
 
     if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
       throw new Error(
@@ -361,18 +324,11 @@ export const addAttendanceHandler = async (
       message: "Added attendance successfully",
       payload: [attendance],
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -443,19 +399,11 @@ export const updateAttendanceHandler = async (
       message: "Updated attendance successfully",
       payload: [updatedAttendance],
     });
-    
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -478,18 +426,11 @@ export const getAttendanceByDateHandler = async (
       message: "Fetched attendance by date successfully",
       payload: attendance,
     });
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }
@@ -520,19 +461,11 @@ export const getAttendanceByIdHandler = async (
       message: "Fetched attendance by ID successfully",
       payload: [attendance],
     });
-    
-  } catch (error: any) {
-    if (error instanceof z.ZodError) {
-      return res.status(400).json({
-        status: 0,
-        message: error.errors[0].message,
-        payload: [],
-      });
-    }
-
-    return res.status(500).json({
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
       status: 0,
-      message: error.message,
+      message: err.message,
       payload: [],
     });
   }

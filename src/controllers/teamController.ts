@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { z } from "zod";
 import {
   createTeam,
   getAllTeams,
@@ -13,7 +12,6 @@ import {
   teamSchema,
   teamUpdateSchema,
 } from "../validations/teamValidations";
-import { create } from "domain";
 
 // Module --> Team
 // Method --> GET (Protected)
@@ -34,7 +32,7 @@ export const getAllTeamsHandler = async (
   } catch (error) {
     const err = handleAppError(error);
     return res.status(err.status).json({
-      success: 0,
+      status: 0,
       message: err.message,
       payload: [],
     });
