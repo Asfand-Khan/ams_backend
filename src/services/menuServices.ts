@@ -33,7 +33,6 @@ type ChildItem = {
 
 function transformMenu(flatMenu: MenuItem[]): MenuOutput[] {
   const menuMap: { [key: number]: MenuOutput } = {};
-  const result: MenuOutput[] = [];
 
   flatMenu.forEach((item) => {
     const { id, name, url, icon, parent_id, sorting, description } = item;
@@ -77,11 +76,7 @@ function transformMenu(flatMenu: MenuItem[]): MenuOutput[] {
 }
 
 export const allMenus = async () => {
-  try {
-    const menus = await prisma.menu.findMany();
-    const nestedMenus = transformMenu(menus as MenuItem[]);
-    return nestedMenus;
-  } catch (error: any) {
-    throw new Error(`Failed to get menus: ${error.message}`);
-  }
+  const menus = await prisma.menu.findMany();
+  const nestedMenus = transformMenu(menus as MenuItem[]);
+  return nestedMenus;
 };

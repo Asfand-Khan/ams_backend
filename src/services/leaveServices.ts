@@ -39,10 +39,9 @@ export const createLeave = async (data: Leave, days: number) => {
 };
 
 export const allLeaves = async (data: LeaveListing) => {
-  try {
-    let leaves = null;
-    if (data.employee_id) {
-      leaves = await prisma.$queryRaw`
+  let leaves = null;
+  if (data.employee_id) {
+    leaves = await prisma.$queryRaw`
         SELECT
 	        l.id AS leave_id,
 	        l.employee_id,
@@ -69,8 +68,8 @@ export const allLeaves = async (data: LeaveListing) => {
 	      AND l.is_deleted = 0 
 	      AND l.employee_id = ${data.employee_id}   
     `;
-    } else {
-      leaves = await prisma.$queryRaw`
+  } else {
+    leaves = await prisma.$queryRaw`
         SELECT
 	        l.id AS leave_id,
 	        l.employee_id,
@@ -96,31 +95,22 @@ export const allLeaves = async (data: LeaveListing) => {
 	        l.is_active = 1 
 	      AND l.is_deleted = 0 
     `;
-    }
-
-    return leaves;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch leaves: ${error.message}`);
   }
+  return leaves;
 };
 
 export const singleLeave = async (data: SingleLeave) => {
-  try {
-    const leave = await prisma.leave.findUnique({
-      where: {
-        id: data.leave_id,
-      },
-    });
+  const leave = await prisma.leave.findUnique({
+    where: {
+      id: data.leave_id,
+    },
+  });
 
-    return leave;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch single leave: ${error.message}`);
-  }
+  return leave;
 };
 
 export const leaveSummary = async (employee_id: number) => {
-  try {
-    const leaveSummary: any = await prisma.$queryRaw`
+  const leaveSummary: any = await prisma.$queryRaw`
       SELECT
         lt.NAME AS leave_type,
         elq.used_days,
@@ -136,25 +126,22 @@ export const leaveSummary = async (employee_id: number) => {
         AND elq.is_deleted = 0;
     `;
 
-    // Convert BigInt fields to numbers or strings
-    const serializedSummary = leaveSummary.map((record: any) => ({
-      leave_type: record.leave_type,
-      used_days:
-        typeof record.used_days === "bigint"
-          ? Number(record.used_days)
-          : record.used_days,
-      total_quota:
-        typeof record.total_quota === "bigint"
-          ? Number(record.total_quota)
-          : record.total_quota,
-      remaining:
-        typeof record.remaining === "bigint"
-          ? Number(record.remaining)
-          : record.remaining,
-    }));
+  // Convert BigInt fields to numbers or strings
+  const serializedSummary = leaveSummary.map((record: any) => ({
+    leave_type: record.leave_type,
+    used_days:
+      typeof record.used_days === "bigint"
+        ? Number(record.used_days)
+        : record.used_days,
+    total_quota:
+      typeof record.total_quota === "bigint"
+        ? Number(record.total_quota)
+        : record.total_quota,
+    remaining:
+      typeof record.remaining === "bigint"
+        ? Number(record.remaining)
+        : record.remaining,
+  }));
 
-    return serializedSummary;
-  } catch (error: any) {
-    throw new Error(`Failed to create leave summary: ${error.message}`);
-  }
+  return serializedSummary;
 };

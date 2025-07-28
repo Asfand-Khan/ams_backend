@@ -5,67 +5,55 @@ import {
 } from "../validations/designationValidations";
 
 export const getAllDesignations = async () => {
-  try {
-    const allDesignations = await prisma.designation.findMany({
-      where: {
-        is_deleted: false,
-      },
-    });
-    return allDesignations;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch all Designations: ${error.message}`);
-  }
+  const allDesignations = await prisma.designation.findMany({
+    where: {
+      is_deleted: false,
+    },
+  });
+  return allDesignations;
 };
 
 export const createDesignation = async (designation: Designation) => {
-  try {
-    const data = {
-      level: designation.level,
-      title: designation.title,
-    } as any;
+  const data = {
+    level: designation.level,
+    title: designation.title,
+  } as any;
 
-    if (designation.description) {
-      data["description"] = designation.description;
-    }
-
-    if (designation.department_id) {
-      data["department_id"] = designation.department_id;
-    }
-
-    const newDesignation = await prisma.designation.create({
-      data,
-    });
-    return newDesignation;
-  } catch (error: any) {
-    throw new Error(`Failed to create a designation: ${error.message}`);
+  if (designation.description) {
+    data["description"] = designation.description;
   }
+
+  if (designation.department_id) {
+    data["department_id"] = designation.department_id;
+  }
+
+  const newDesignation = await prisma.designation.create({
+    data,
+  });
+  return newDesignation;
 };
 
 export const updateDesignation = async (designation: DesignationUpdate) => {
-  try {
-    const data = {
-      level: designation.level,
-      title: designation.title,
-    } as any;
+  const data = {
+    level: designation.level,
+    title: designation.title,
+  } as any;
 
-    if (designation.description) {
-      data["description"] = designation.description;
-    }
-
-    if (designation.department_id) {
-      data["department_id"] = designation.department_id;
-    }
-
-    const updatedDesignation = await prisma.designation.update({
-      data,
-      where: {
-        id: designation.designation_id,
-      },
-    });
-    return updatedDesignation;
-  } catch (error: any) {
-    throw new Error(`Failed to create a designation: ${error.message}`);
+  if (designation.description) {
+    data["description"] = designation.description;
   }
+
+  if (designation.department_id) {
+    data["department_id"] = designation.department_id;
+  }
+
+  const updatedDesignation = await prisma.designation.update({
+    data,
+    where: {
+      id: designation.designation_id,
+    },
+  });
+  return updatedDesignation;
 };
 
 export const getDesignationByTitle = async (title: string) => {

@@ -24,58 +24,42 @@ export const createTeam = async (team: Team) => {
 };
 
 export const updateTeam = async (team: TeamUpdate) => {
-  try {
-    const data: any = {
-      name: team.name,
-      department_id: team.department_id,
-    };
+  const data: any = {
+    name: team.name,
+    department_id: team.department_id,
+  };
 
-    if (team.description) data.description = team.description;
-    if (team.team_lead_id) data.team_lead_id = team.team_lead_id;
+  if (team.description) data.description = team.description;
+  if (team.team_lead_id) data.team_lead_id = team.team_lead_id;
 
-    const updatedTeam = await prisma.team.update({
-      where: {
-        id: team.team_id,
-      },
-      data,
-    });
+  const updatedTeam = await prisma.team.update({
+    where: {
+      id: team.team_id,
+    },
+    data,
+  });
 
-    return updatedTeam;
-  } catch (error: any) {
-    throw new Error(`Failed to update a team: ${error.message}`);
-  }
+  return updatedTeam;
 };
 
 export const deleteTeam = async (id: number) => {
-  try {
-    const deletedTeam = await prisma.team.update({
-      where: { id },
-      data: { is_deleted: true },
-    });
-    return deletedTeam;
-  } catch (error: any) {
-    throw new Error(`Failed to delete the team: ${error.message}`);
-  }
+  const deletedTeam = await prisma.team.update({
+    where: { id },
+    data: { is_deleted: true },
+  });
+  return deletedTeam;
 };
 
 export const getTeamById = async (id: number) => {
-  try {
-    const team = await prisma.team.findUnique({
-      where: { id },
-    });
-    return team;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch team by ID: ${error.message}`);
-  }
+  const team = await prisma.team.findUnique({
+    where: { id },
+  });
+  return team;
 };
 
 export const getTeamByName = async (name: string) => {
-  try {
-    const team = await prisma.team.findUnique({
-      where: { name: name.toLowerCase() },
-    });
-    return team;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch team by name: ${error.message}`);
-  }
+  const team = await prisma.team.findUnique({
+    where: { name: name.toLowerCase() },
+  });
+  return team;
 };

@@ -7,172 +7,160 @@ import {
 } from "../validations/employeeValidations";
 
 export const getAllEmployees = async () => {
-  try {
-    const allEmployees = await prisma.employee.findMany({
-      where: {
-        is_deleted: false,
-      },
-    });
-    return allEmployees;
-  } catch (error: any) {
-    throw new Error(`Failed to fetch all employees: ${error.message}`);
-  }
+  const allEmployees = await prisma.employee.findMany({
+    where: {
+      is_deleted: false,
+    },
+  });
+  return allEmployees;
 };
 
 export const createEmployee = async (employee: Employee) => {
-  try {
-    const data = {
-      email: employee.email,
-      employee_code: employee.employee_code,
-      full_name: employee.full_name,
-      designation_id: employee.designation_id,
-      department_id: employee.department_id,
-      status: employee.status,
-    } as any;
+  const data = {
+    email: employee.email,
+    employee_code: employee.employee_code,
+    full_name: employee.full_name,
+    designation_id: employee.designation_id,
+    department_id: employee.department_id,
+    status: employee.status,
+  } as any;
 
-    if (employee.address) {
-      data["address"] = employee.address;
-    }
+  if (employee.address) {
+    data["address"] = employee.address;
+  }
 
-    if (employee.fathername) {
-      data["father_name"] = employee.fathername;
-    }
+  if (employee.fathername) {
+    data["father_name"] = employee.fathername;
+  }
 
-    if (employee.cnic) {
-      data["cnic"] = employee.cnic;
-    }
+  if (employee.cnic) {
+    data["cnic"] = employee.cnic;
+  }
 
-    if (employee.phone) {
-      data["phone"] = employee.phone;
-    }
+  if (employee.phone) {
+    data["phone"] = employee.phone;
+  }
 
-    if (employee.join_date) data["join_date"] = new Date(employee.join_date);
-    if (employee.leave_date) data["leave_date"] = new Date(employee.leave_date);
-    if (employee.dob) data["dob"] = new Date(employee.dob);
+  if (employee.join_date) data["join_date"] = new Date(employee.join_date);
+  if (employee.leave_date) data["leave_date"] = new Date(employee.leave_date);
+  if (employee.dob) data["dob"] = new Date(employee.dob);
 
-    if (employee.gender) {
-      data["gender"] = employee.gender;
-    }
+  if (employee.gender) {
+    data["gender"] = employee.gender;
+  }
 
-    const result = await prisma.$transaction(async (tx) => {
-      const newEmployee = await tx.employee.create({ data });
+  const result = await prisma.$transaction(async (tx) => {
+    const newEmployee = await tx.employee.create({ data });
 
-      const leavesTypes = await prisma.leaveType.findMany();
+    const leavesTypes = await prisma.leaveType.findMany();
 
-      const user = await tx.user.create({
-        data: {
-          username: employee.username,
-          password_hash: generateRandomHex(16),
-          employee_id: newEmployee.id,
-          email: employee.email,
-          type: employee.emp_type,
-        },
-      });
-
-      if (employee.menu_rights && employee.menu_rights.length > 0) {
-        const menuRightsData = employee.menu_rights.map((right) => ({
-          user_id: user.id,
-          menu_id: right.menu_id,
-          can_view: right.can_view ?? true,
-          can_create: right.can_create ?? false,
-          can_edit: right.can_edit ?? false,
-          can_delete: right.can_delete ?? false,
-        }));
-
-        await prisma.userMenuRight.createMany({
-          data: menuRightsData,
-        });
-      }
-
-      await tx.employeeShift.create({
-        data: {
-          employee_id: newEmployee.id,
-          shift_id: employee.shift_id,
-          effective_from: new Date(),
-        },
-      });
-
-      if (employee.team_id) {
-        await tx.teamMember.create({
-          data: {
-            employee_id: newEmployee.id,
-            team_id: employee.team_id,
-          },
-        });
-      }
-
-      for (const leaveType of leavesTypes) {
-        await tx.employeeLeaveQuota.create({
-          data: {
-            employee_id: newEmployee.id,
-            leave_type_id: leaveType.id,
-            year: new Date().getFullYear(),
-          },
-        });
-      }
-
-      return {
-        ...newEmployee,
-        username: user.username,
-        password: user.password_hash,
-      };
+    const user = await tx.user.create({
+      data: {
+        username: employee.username,
+        password_hash: generateRandomHex(16),
+        employee_id: newEmployee.id,
+        email: employee.email,
+        type: employee.emp_type,
+      },
     });
 
-    return result;
-  } catch (error: any) {
-    throw new Error(`Failed to create a employee: ${error.message}`);
-  }
+    if (employee.menu_rights && employee.menu_rights.length > 0) {
+      const menuRightsData = employee.menu_rights.map((right) => ({
+        user_id: user.id,
+        menu_id: right.menu_id,
+        can_view: right.can_view ?? true,
+        can_create: right.can_create ?? false,
+        can_edit: right.can_edit ?? false,
+        can_delete: right.can_delete ?? false,
+      }));
+
+      await prisma.userMenuRight.createMany({
+        data: menuRightsData,
+      });
+    }
+
+    await tx.employeeShift.create({
+      data: {
+        employee_id: newEmployee.id,
+        shift_id: employee.shift_id,
+        effective_from: new Date(),
+      },
+    });
+
+    if (employee.team_id) {
+      await tx.teamMember.create({
+        data: {
+          employee_id: newEmployee.id,
+          team_id: employee.team_id,
+        },
+      });
+    }
+
+    for (const leaveType of leavesTypes) {
+      await tx.employeeLeaveQuota.create({
+        data: {
+          employee_id: newEmployee.id,
+          leave_type_id: leaveType.id,
+          year: new Date().getFullYear(),
+        },
+      });
+    }
+
+    return {
+      ...newEmployee,
+      username: user.username,
+      password: user.password_hash,
+    };
+  });
+
+  return result;
 };
 
 export const updateEmployee = async (employee: EmployeeUpdate) => {
-  try {
-    const data = {
-      email: employee.email,
-      employee_code: employee.employee_code,
-      full_name: employee.full_name,
-      designation_id: employee.designation_id,
-      department_id: employee.department_id,
-      status: employee.status,
-    } as any;
+  const data = {
+    email: employee.email,
+    employee_code: employee.employee_code,
+    full_name: employee.full_name,
+    designation_id: employee.designation_id,
+    department_id: employee.department_id,
+    status: employee.status,
+  } as any;
 
-    if (employee.address) {
-      data["address"] = employee.address;
-    }
-
-    if (employee.cnic) {
-      data["cnic"] = employee.cnic;
-    }
-
-    if (employee.phone) {
-      data["phone"] = employee.phone;
-    }
-
-    if (employee.join_date) {
-      data["join_date"] = employee.join_date;
-    }
-
-    if (employee.leave_date) {
-      data["leave_date"] = employee.leave_date;
-    }
-
-    if (employee.dob) {
-      data["dob"] = employee.dob;
-    }
-
-    if (employee.gender) {
-      data["gender"] = employee.gender;
-    }
-
-    const updatedEmployee = await prisma.employee.update({
-      data,
-      where: {
-        id: employee.employee_id,
-      },
-    });
-    return updatedEmployee;
-  } catch (error: any) {
-    throw new Error(`Failed to update a employee: ${error.message}`);
+  if (employee.address) {
+    data["address"] = employee.address;
   }
+
+  if (employee.cnic) {
+    data["cnic"] = employee.cnic;
+  }
+
+  if (employee.phone) {
+    data["phone"] = employee.phone;
+  }
+
+  if (employee.join_date) {
+    data["join_date"] = employee.join_date;
+  }
+
+  if (employee.leave_date) {
+    data["leave_date"] = employee.leave_date;
+  }
+
+  if (employee.dob) {
+    data["dob"] = employee.dob;
+  }
+
+  if (employee.gender) {
+    data["gender"] = employee.gender;
+  }
+
+  const updatedEmployee = await prisma.employee.update({
+    data,
+    where: {
+      id: employee.employee_id,
+    },
+  });
+  return updatedEmployee;
 };
 
 export const getEmployeeByCode = async (code: string) => {
