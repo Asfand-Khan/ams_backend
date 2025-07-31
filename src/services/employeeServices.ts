@@ -1,4 +1,8 @@
 import prisma from "../config/db";
+import {
+  extractImageAndExtension,
+  saveBase64Image,
+} from "../utils/base64Helpers";
 import { generateRandomHex } from "../utils/generateRandomHex";
 import {
   Employee,
@@ -277,12 +281,26 @@ export const updateEmployeeProfile = async (data: EmployeeUpdateProfile) => {
     where: { employee_id: data.employee_id },
   });
 
-  await prisma.user.update({
+  const updatedUser = await prisma.user.update({
     data: userData,
     where: {
       id: user?.id,
     },
   });
+
+  if (data.profile_picture) {
+    const { image: imageBase64, extension } = extractImageAndExtension(
+      data.profile_picture
+    );
+    employeeData.profile_picture = `${new Date().getTime()}.${extension}`;
+    const customDirectory = "uploads/users";
+    const { success } = await saveBase64Image(
+      imageBase64,
+      employeeData.profile_picture,
+      customDirectory
+    );
+    if (!success) throw new Error("Failed to save user image");
+  }
 
   const updatedEmployee = await prisma.employee.update({
     data: employeeData,

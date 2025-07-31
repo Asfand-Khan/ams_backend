@@ -7,7 +7,7 @@ import morgan from "morgan";
 import path from "path";
 
 export default (app: express.Application): void => {
-  app.use(express.json());
+  app.use(express.json(({ limit: '10mb' })));
   app.use(cors());
   app.use(helmet());
 

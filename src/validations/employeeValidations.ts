@@ -2,6 +2,8 @@ import { z } from "zod";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
+const base64ImageRegex =
+  /^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]+$/;
 
 const isValidPastOrTodayDate = (dateStr: string) => {
   const date = new Date(dateStr);
@@ -112,12 +114,10 @@ export const employeeSchema = z.object({
     .max(255, "Profile picture URL is too long")
     .optional(),
 
-  address: z
-    .string()
-    .max(1000, "Address must be at most 1000 characters"),
+  address: z.string().max(1000, "Address must be at most 1000 characters"),
 
   status: statusEnum.default("active"),
-  
+
   menu_rights: z
     .array(
       z.object({
@@ -178,13 +178,11 @@ export const employeeUpdateProfileSchema = z.object({
   fullname: z
     .string({ invalid_type_error: "Full name must be a string" })
     .max(100, "Full name must be at most 100 characters")
-    .toLowerCase()
     .nullable()
     .optional(),
   fathername: z
     .string({ invalid_type_error: "Father name must be a string" })
     .max(100, "Father name must be at most 100 characters")
-    .toLowerCase()
     .nullable()
     .optional(),
   dob: z
@@ -220,13 +218,22 @@ export const employeeUpdateProfileSchema = z.object({
   address: z
     .string()
     .max(1000, "Address must be at most 1000 characters")
-    .toLowerCase()
+    .nullable()
+    .optional(),
+  profile_picture: z
+    .string({ invalid_type_error: "Profile picture must be a string" })
+    .regex(
+      base64ImageRegex,
+      "Profile picture must be a valid base64 image format (e.g., data:image/png;base64,...)"
+    )
     .nullable()
     .optional(),
 });
 
 export type Employee = z.infer<typeof employeeSchema>;
 export type EmployeeUpdate = z.infer<typeof employeeUpdateSchema>;
-export type EmployeeChangePassword = z.infer<typeof employeeChangePasswordSchema>;
+export type EmployeeChangePassword = z.infer<
+  typeof employeeChangePasswordSchema
+>;
 export type EmployeeProfile = z.infer<typeof employeeProfileSchema>;
 export type EmployeeUpdateProfile = z.infer<typeof employeeUpdateProfileSchema>;
