@@ -19,6 +19,7 @@ import {
 import { sendEmail } from "../utils/sendEmail";
 import { generateToken } from "../utils/authHelpers";
 import { handleAppError } from "../utils/appErrorHandler";
+import { getOTPTemplate } from "../utils/otpTemplate";
 
 // Module --> Auth
 // Endpoint --> /api/v1/auth/login
@@ -92,8 +93,11 @@ export const sendOtpHandler = async (
 
     await sendEmail({
       to: userByUsername.email,
-      subject: "Orio Attendance - OTP for login",
-      text: "Your OTP is " + userByUsername.otp_token,
+      subject: "Orio Connect - OTP for login",
+      html: getOTPTemplate(
+        userByUsername.otp_token,
+        userByUsername.employee?.full_name || userByUsername.username
+      ),
     });
 
     return res.status(200).json({
