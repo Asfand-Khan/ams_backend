@@ -41,7 +41,7 @@ export const getOTPTemplate = (otp: string | null, name: string) => `
               support your community.
             </p>
             <div style="padding: 5px 0px">Best regards,</div>
-            <div>Team Jubilee Retail</div>
+            <div>Team Orio</div>
           </div>
         </div>
       </div>
