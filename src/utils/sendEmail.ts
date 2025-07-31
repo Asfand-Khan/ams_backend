@@ -21,6 +21,9 @@ export const sendEmail = async (options: SendEmailOptions) => {
       user: process.env.SMTP_USER, // use SMTP_USER for AWS SES
       pass: process.env.SMTP_PASS,
     },
+    ssl: {
+      rejectUnauthorized: false,
+    },
     logger: true,
     debug: true,
   } as SMTPTransport.Options);
