@@ -5,6 +5,7 @@ import routes from "./routes";
 import logger from "./config/logger";
 import morgan from "morgan";
 import path from "path";
+import initializeCronJobs from "./jobs/cronJobs";
 
 export default (app: express.Application): void => {
   app.use(express.json(({ limit: '10mb' })));
@@ -49,6 +50,9 @@ export default (app: express.Application): void => {
   app.use((req, res, next) => {
     res.status(404).json({ message: "API Route Not Found" });
   });
+
+  initializeCronJobs();
+  
   app.use(
     (
       err: Error,
