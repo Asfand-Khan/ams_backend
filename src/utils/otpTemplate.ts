@@ -11,16 +11,6 @@ export const getOTPTemplate = (otp: string | null, name: string) => `
 <body>
   <div style="margin: auto">
       <div style="width: 600px; margin: 0px auto">
-        <div style="text-align: center; margin: 20px 0px; background-color: #FFFFFF; border: 1px solid #0074FC;">
-          <img
-            src="${process.env.ASSET_URL}/orio_logo.svg"
-            alt=""
-            style="width: 160px"
-            class="CToWUd a6T"
-            data-bit="iit"
-            tabindex="0"
-          />
-        </div>
         <div>
           <h2
             style="

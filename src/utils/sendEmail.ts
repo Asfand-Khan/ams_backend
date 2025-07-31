@@ -15,17 +15,15 @@ interface SendEmailOptions {
 export const sendEmail = async (options: SendEmailOptions) => {
   const transporter: Transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 465,
-    secure: process.env.SMTP_PORT === "465",
+    port: Number(process.env.SMTP_PORT) || 587,
+    secure: true,
     auth: {
-      user: process.env.SMTP_USER, // use SMTP_USER for AWS SES
+      user: process.env.SMTP_EMAIL,
       pass: process.env.SMTP_PASS,
     },
-    ssl: {
+    tls: {
       rejectUnauthorized: false,
     },
-    logger: true,
-    debug: true,
   } as SMTPTransport.Options);
 
   // Optional: Verify connection before sending
@@ -38,9 +36,7 @@ export const sendEmail = async (options: SendEmailOptions) => {
   });
 
   const mailOptions: SMTPTransport.Options = {
-    from: `"${options.fromName || "Orio Attendance"}" <${
-      process.env.SMTP_EMAIL
-    }>`,
+    from: `"${options.fromName || "Orio Attendance"}" <${process.env.SMTP_EMAIL}>`,
     to: options.to,
     subject: options.subject,
     html: options.html,
