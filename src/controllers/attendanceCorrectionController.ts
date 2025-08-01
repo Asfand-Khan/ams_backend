@@ -123,7 +123,7 @@ export const approveRejectAttendanceCorrectionHandler = async (
   try {
     const parsedData = approveRejectAttendanceCorrectionSchema.parse(req.body);
 
-    const updtaedCorrection = await attendanceCorrectionRejectApprove(parsedData);
+    const updtaedCorrection = await attendanceCorrectionRejectApprove(parsedData, null);
 
     return res.status(200).json({
       status: 1,

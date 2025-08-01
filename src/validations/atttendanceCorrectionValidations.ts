@@ -55,6 +55,12 @@ export const attendanceCorrectionListingSchema = z.object({
     .nullable()
     .optional(),
   status: z.enum(["pending", "approved", "rejected"]).nullable().optional(),
+  date: z
+    .string({ required_error: "Attendance date is required" })
+    .regex(dateRegex, "Attendance date must be in 'YYYY-MM-DD' format")
+    .refine(isValidPastOrTodayDate, "Attendance date cannot be in the future")
+    .nullable()
+    .optional(),
 });
 
 export const singleAttendanceCorrectionSchema = z.object({

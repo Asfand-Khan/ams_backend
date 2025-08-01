@@ -45,6 +45,16 @@ export const attendanceCorrectionListing = async (
   if (data.employee_id) {
     whereClause["employee_id"] = data.employee_id;
   }
+  if (data.date) {
+    const inputDate = new Date(data.date);
+    const startOfDay = new Date(inputDate.setHours(0, 0, 0, 0));
+    const endOfDay = new Date(inputDate.setHours(23, 59, 59, 999));
+
+    whereClause["created_at"] = {
+      gte: startOfDay,
+      lte: endOfDay,
+    };
+  }
 
   const correction = await prisma.attendanceCorrectionRequest.findMany({
     where: whereClause,
@@ -90,7 +100,8 @@ export const attendanceCorrectionSingle = async (
 };
 
 export const attendanceCorrectionRejectApprove = async (
-  data: ApproveRejectAttendanceCorrection
+  data: ApproveRejectAttendanceCorrection,
+  reviewed_by: number | null
 ) => {
   const result = await prisma.$transaction(async (tx) => {
     const correction = await tx.attendanceCorrectionRequest.findUnique({
@@ -125,6 +136,8 @@ export const attendanceCorrectionRejectApprove = async (
       data: {
         status: data.status,
         remarks: data.remarks,
+        reviewed_on: new Date(),
+        reviewed_by: reviewed_by ?? null,
       },
     });
   } else {
@@ -187,6 +200,8 @@ export const attendanceCorrectionRejectApprove = async (
       data: {
         status: data.status,
         remarks: data.remarks,
+        reviewed_on: new Date(),
+        reviewed_by: reviewed_by ?? null,
       },
     });
   }
