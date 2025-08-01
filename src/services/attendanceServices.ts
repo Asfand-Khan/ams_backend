@@ -131,7 +131,7 @@ FROM
   Attendance a
 WHERE 
   a.employee_id = ${employee_id}
-  AND a.date BETWEEN '${start_date}' AND '${end_date}'
+  AND DATE(a.date) BETWEEN '${start_date}' AND '${end_date}'
 GROUP BY 
   a.employee_id;
 `;
