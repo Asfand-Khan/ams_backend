@@ -64,6 +64,22 @@ export const singleAttendanceCorrectionSchema = z.object({
     .positive("Attendance correction ID must be a positive number"),
 });
 
+export const approveRejectAttendanceCorrectionSchema = z.object({
+  attendance_correction_id: z
+    .number({ required_error: "Attendance correction ID is required" })
+    .int("Attendance correction ID must be an integer")
+    .positive("Attendance correction ID must be a positive number"),
+  employee_id: z
+    .number({ required_error: "Employee ID is required" })
+    .int("Employee ID must be an integer")
+    .positive("Employee ID must be a positive number"),
+  status: z.enum(["approved", "rejected"]),
+  remarks: z
+    .string({ required_error: "Remarks is required" })
+    .nullable()
+    .optional(),
+});
+
 export type AttendanceCorrectionCreate = z.infer<
   typeof attendanceCorrectionCreateSchema
 >;
@@ -72,4 +88,7 @@ export type AttendanceCorrectionListing = z.infer<
 >;
 export type SingleAttendanceCorrection = z.infer<
   typeof singleAttendanceCorrectionSchema
+>;
+export type ApproveRejectAttendanceCorrection = z.infer<
+  typeof approveRejectAttendanceCorrectionSchema
 >;

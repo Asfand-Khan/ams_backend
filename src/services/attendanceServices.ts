@@ -239,6 +239,7 @@ export const updateAttendance = async (
 ) => {
   let dataToInsert = {
     date: data.attendance_date,
+    day_status: "present",
   } as any;
 
   if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;

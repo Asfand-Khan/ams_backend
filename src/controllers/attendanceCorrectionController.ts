@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  approveRejectAttendanceCorrectionSchema,
   attendanceCorrectionCreateSchema,
   attendanceCorrectionListingSchema,
   singleAttendanceCorrectionSchema,
@@ -7,6 +8,7 @@ import {
 import { singleAttendance } from "../services/attendanceServices";
 import {
   attendanceCorrectionListing,
+  attendanceCorrectionRejectApprove,
   attendanceCorrectionSingle,
   createAttendanceCorrection,
 } from "../services/attendanceCorrectionServices";
@@ -99,6 +101,34 @@ export const getSingleAttendanceCorrectionHandler = async (
       status: 1,
       message: "Single attendance correction fetched successfully",
       payload: [correctionSingle],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance Correction
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/attendance-correction/approve-reject
+// Description --> Approve Attendance Correction
+export const approveRejectAttendanceCorrectionHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = approveRejectAttendanceCorrectionSchema.parse(req.body);
+
+    const updtaedCorrection = await attendanceCorrectionRejectApprove(parsedData);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Updated attendance correction successfully",
+      payload: [updtaedCorrection],
     });
   } catch (error) {
     const err = handleAppError(error);
