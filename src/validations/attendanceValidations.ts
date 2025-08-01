@@ -3,10 +3,15 @@ import { z } from "zod";
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
 
-const isValidPastOrTodayDate = (dateStr: string) => {
-  const date = new Date(dateStr);
+const isValidPastOrTodayDate = (dateStr: string): boolean => {
+  const inputDate = new Date(dateStr);
   const today = new Date();
-  return date.getDate() <= today.getDate();
+
+  // Set both dates to start of day (ignore time for pure date comparison)
+  inputDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return inputDate <= today;
 };
 
 export const checkInSchema = z.object({

@@ -14,6 +14,12 @@ async function notifyCheckOut6PM() {
   console.log("Notify checkout 6PM work ended.");
 }
 
+// async function sendEmail() {
+//   console.log("Details work started.");
+//   await sendDetails();
+//   console.log("Details work ended.");
+// }
+
 export default function initializeCronJobs() {
   try {
     const notifyCheckInSchedule10AM = cron.schedule("05 10 * * *", () => { notifyCheckIn10AM() },{ timezone: "Asia/Karachi" });

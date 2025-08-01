@@ -5,10 +5,15 @@ const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
 const base64ImageRegex =
   /^data:image\/(png|jpeg|jpg|gif|webp);base64,[A-Za-z0-9+/=]+$/;
 
-const isValidPastOrTodayDate = (dateStr: string) => {
-  const date = new Date(dateStr);
+const isValidPastOrTodayDate = (dateStr: string): boolean => {
+  const inputDate = new Date(dateStr);
   const today = new Date();
-  return date.getDate() <= today.getDate();
+
+  // Set both dates to start of day (ignore time for pure date comparison)
+  inputDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  return inputDate <= today;
 };
 
 export const genderEnum = z.enum(["male", "female"], {
