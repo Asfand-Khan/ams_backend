@@ -23,10 +23,10 @@ async function notifyCheckOut6PM() {
 export default function initializeCronJobs() {
   try {
     const notifyCheckInSchedule10AM = cron.schedule("05 10 * * *", () => { notifyCheckIn10AM() },{ timezone: "Asia/Karachi" });
-    notifyCheckInSchedule10AM.start();
+    // notifyCheckInSchedule10AM.start();
 
     const notifyCheckOutSchedule6PM = cron.schedule("01 18 * * *", () => { notifyCheckOut6PM() },{ timezone: "Asia/Karachi" });
-    notifyCheckOutSchedule6PM.start();
+    // notifyCheckOutSchedule6PM.start();
   } catch (err: any) {
     console.error("❌ Cron job initialization failed:", err.message);
   }
