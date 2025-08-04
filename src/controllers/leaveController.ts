@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  approveRejectLeaveSchema,
   leaveListingSchema,
   leaveSchema,
   leaveSummarySchema,
@@ -9,6 +10,7 @@ import {
   allLeaves,
   calculateDays,
   createLeave,
+  leaveRejectApprove,
   leaveSummary,
   singleLeave,
 } from "../services/leaveServices";
@@ -117,6 +119,34 @@ export const leaveSummaryHandler = async (
       status: 1,
       message: "Leave summary fetched successfully",
       payload: summary,
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Leave
+// Method --> POST (Protected)
+// Endpoint --> /api/v1/leave/approve-reject
+// Description --> Approve/Reject Leave
+export const approveRejectLeaveHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = approveRejectLeaveSchema.parse(req.body);
+
+    const updtaedLeave = await leaveRejectApprove(parsedData, null);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Updated leave successfully",
+      payload: [updtaedLeave],
     });
   } catch (error) {
     const err = handleAppError(error);

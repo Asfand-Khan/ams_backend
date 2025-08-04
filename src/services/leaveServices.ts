@@ -1,10 +1,17 @@
 import prisma from "../config/db";
 import dayjs from "dayjs";
 import {
+  ApproveRejectLeave,
   Leave,
   LeaveListing,
   SingleLeave,
 } from "../validations/leaveValidations";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
+
+// Extend dayjs with plugins
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export const calculateDays = (startDate: string, endDate: string): number => {
   const start = dayjs(startDate);
@@ -39,63 +46,61 @@ export const createLeave = async (data: Leave, days: number) => {
 };
 
 export const allLeaves = async (data: LeaveListing) => {
-  let leaves = null;
+  const whereConditions: string[] = [];
+  const parameters: any[] = [];
+
+  // Base conditions (always applied)
+  whereConditions.push("l.is_active = 1");
+  whereConditions.push("l.is_deleted = 0");
+
+  // Optional filters
   if (data.employee_id) {
-    leaves = await prisma.$queryRaw`
-        SELECT
-	        l.id AS leave_id,
-	        l.employee_id,
-	        l.leave_type_id,
-	        lt.NAME AS leave_type_name,
-	        l.start_date,
-	        l.end_date,
-	        l.total_days,
-	        l.reason,
-	        l.STATUS,
-	        l.applied_on,
-	        l.approved_by,
-	        l.approved_on,
-	        l.remarks,
-	        l.is_active,
-	        l.is_deleted,
-	        l.created_at,
-	        l.updated_at 
-        FROM
-	        \`Leave\` l
-	      LEFT JOIN LeaveType lt ON l.leave_type_id = lt.id 
-        WHERE
-	        l.is_active = 1 
-	      AND l.is_deleted = 0 
-	      AND l.employee_id = ${data.employee_id}   
-    `;
-  } else {
-    leaves = await prisma.$queryRaw`
-        SELECT
-	        l.id AS leave_id,
-	        l.employee_id,
-	        l.leave_type_id,
-	        lt.NAME AS leave_type_name,
-	        l.start_date,
-	        l.end_date,
-	        l.total_days,
-	        l.reason,
-	        l.STATUS,
-	        l.applied_on,
-	        l.approved_by,
-	        l.approved_on,
-	        l.remarks,
-	        l.is_active,
-	        l.is_deleted,
-	        l.created_at,
-	        l.updated_at 
-        FROM
-	        \`Leave\` l
-	      LEFT JOIN LeaveType lt ON l.leave_type_id = lt.id 
-        WHERE
-	        l.is_active = 1 
-	      AND l.is_deleted = 0 
-    `;
+    whereConditions.push(`l.employee_id = ?`);
+    parameters.push(data.employee_id);
   }
+
+  if (data.status) {
+    whereConditions.push(`l.status = ?`);
+    parameters.push(data.status);
+  }
+
+  if (data.date) {
+    // For date filtering, check if provided date is between start_date and end_date
+    whereConditions.push(`? BETWEEN DATE(l.created_at) AND DATE(l.created_at)`);
+    parameters.push(data.date);
+  }
+
+  const whereClause =
+    whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+
+  const query = `
+    SELECT
+      l.id AS leave_id,
+      l.employee_id,
+      emp.full_name,
+      l.leave_type_id,
+      lt.NAME AS leave_type_name,
+      l.start_date,
+      l.end_date,
+      l.total_days,
+      l.reason,
+      l.STATUS,
+      l.applied_on,
+      approver.full_name AS approved_by,
+      l.approved_on,
+      l.remarks,
+      l.is_active,
+      l.is_deleted,
+      l.created_at,
+      l.updated_at 
+    FROM \`Leave\` l
+    LEFT JOIN LeaveType lt ON l.leave_type_id = lt.id
+    LEFT JOIN Employee emp ON l.employee_id = emp.id
+    LEFT JOIN Employee approver ON l.approved_by = approver.id
+    ${whereClause}
+  `;
+
+  const leaves = await prisma.$queryRawUnsafe(query, ...parameters);
   return leaves;
 };
 
@@ -144,4 +149,92 @@ export const leaveSummary = async (employee_id: number) => {
   }));
 
   return serializedSummary;
+};
+
+export const leaveRejectApprove = async (
+  data: ApproveRejectLeave,
+  approved_by: number | null
+) => {
+  const leave = await prisma.leave.findUnique({
+    where: {
+      id: data.leave_id,
+    },
+  });
+
+  if (!leave) {
+    throw new Error("Leave not found");
+  }
+
+  if (data.status === "rejected") {
+    return prisma.leave.update({
+      where: { id: leave.id },
+      data: {
+        status: "rejected",
+        remarks: data.remarks,
+        approved_on: new Date(),
+        approved_by: approved_by ?? null,
+      },
+    });
+  }
+
+  // If leave is being approved
+  const updatedLeave = await prisma.$transaction(
+    async (tx) => {
+      const start = dayjs(leave.start_date).tz("Asia/Karachi").startOf("day");
+      const end = dayjs(leave.end_date).tz("Asia/Karachi").startOf("day");
+      const leaveDays = end.diff(start, "day") + 1;
+
+      for (let i = 0; i < leaveDays; i++) {
+        const day = start.add(i, "day").format("YYYY-MM-DD");
+
+        await tx.attendance.upsert({
+          where: {
+            employee_id_date: {
+              employee_id: data.employee_id,
+              date: day,
+            },
+          },
+          update: {
+            day_status: "leave",
+          },
+          create: {
+            employee_id: data.employee_id,
+            date: day,
+            day_status: "leave",
+          },
+        });
+      }
+
+      const quota = await tx.employeeLeaveQuota.findFirst({
+        where: {
+          employee_id: data.employee_id,
+          leave_type_id: leave.leave_type_id,
+        },
+      });
+
+      if (quota) {
+        await tx.employeeLeaveQuota.update({
+          where: { id: quota.id },
+          data: { used_days: quota.used_days + leaveDays },
+        });
+      }
+
+      const approvedLeave = await tx.leave.update({
+        where: { id: leave.id },
+        data: {
+          status: "approved",
+          remarks: data.remarks,
+          approved_on: new Date(),
+          approved_by: approved_by ?? null,
+        },
+      });
+
+      return approvedLeave;
+    },
+    {
+      timeout: 30000, // 30 seconds
+    }
+  );
+
+  return updatedLeave;
 };

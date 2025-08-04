@@ -464,7 +464,7 @@ model Attendance {
   // ✅ Verified By
   verifiedBy Employee? @relation("AttendanceVerifiedBy", fields: [verified_by], references: [id], onDelete: SetNull)
 
-  @@unique([employee_id, date])
+  @@unique([employee_id, date], name: "employee_id_date")
   @@index([date], name: "idx_date")
   @@index([employee_id, date], name: "idx_employee_date")
 }
