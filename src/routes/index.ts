@@ -13,6 +13,8 @@ import menuRoutes from "./menuRoutes";
 import notificationRoutes from "./notificationsRoutes";
 import teamRoutes from "./teamRoutes";
 import holidayRoutes from "./holidayRoutes";
+import designationRoutes from "./designationRoutes";
+import shiftRoutes from "./shiftRoutes";
 
 const router = Router();
 
@@ -30,6 +32,8 @@ router.use("/menus", menuRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/teams", teamRoutes);
 router.use("/holidays", holidayRoutes);
+router.use("/designations", designationRoutes);
+router.use("/shifts", shiftRoutes);
 
 router.get("/", (req, res) => {
   const dateObj = new Date();

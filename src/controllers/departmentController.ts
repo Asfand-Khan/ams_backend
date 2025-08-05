@@ -84,7 +84,7 @@ export const getSingleDepartmentHandler = async (
   res: Response
 ): Promise<any> => {
   try {
-    const deptId = parseInt(req.params.id);
+    const deptId = parseInt(req.body.id);
 
     if (isNaN(deptId) || deptId <= 0) {
       throw new Error("Invalid department id or department id can not be 0");
