@@ -124,6 +124,7 @@ export default function initializeCronJobs() {
     );
     notifyCheckOutSchedule7PM.start();
 
+    // Mark Absent
     const markAbsentSchedule = cron.schedule(
       "00 23 * * *",
       () => {
@@ -133,6 +134,7 @@ export default function initializeCronJobs() {
     );
     markAbsentSchedule.start();
 
+    // Mark Weekend
     const markWeekendSchedule = cron.schedule(
       "30 23 * * *",
       () => {

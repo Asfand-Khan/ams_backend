@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import * as service from "../services/leaveTypeServices";
-import { leaveTypeSchema } from "../validations/leaveTypeValidations";
+import {
+  leaveTypeSchema,
+  leaveTypeUpdateSchema,
+} from "../validations/leaveTypeValidations";
 import { handleAppError } from "../utils/appErrorHandler";
 
 export const getAll = async (req: Request, res: Response) => {
@@ -50,8 +53,7 @@ export const create = async (req: Request, res: Response) => {
 
 export const update = async (req: Request, res: Response) => {
   try {
-    const id = parseInt(req.params.id);
-    const parsed = leaveTypeSchema.safeParse(req.body);
+    const parsed = leaveTypeUpdateSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(422).json({
         status: 0,
@@ -59,8 +61,7 @@ export const update = async (req: Request, res: Response) => {
         payload: [],
       });
     }
-
-    const type = await service.updateLeaveType(id, parsed.data);
+    const type = await service.updateLeaveType(parsed.data);
     return res.status(200).json({
       status: 1,
       message: "Leave type updated successfully",
@@ -85,6 +86,31 @@ export const remove = async (req: Request, res: Response) => {
       status: 1,
       message: "Leave type deleted successfully",
       payload: [],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+export const single = async (req: Request, res: Response): Promise<any> => {
+  try {
+    const leaveTypeId = parseInt(req.body.id);
+
+    if (isNaN(leaveTypeId) || leaveTypeId <= 0) {
+      throw new Error("Invalid leave type id or leave type id can not be 0");
+    }
+
+    const singleLeaveType = await service.singleLeaveTypeById(leaveTypeId);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Single leave type fetched successfully",
+      payload: [singleLeaveType],
     });
   } catch (error) {
     const err = handleAppError(error);

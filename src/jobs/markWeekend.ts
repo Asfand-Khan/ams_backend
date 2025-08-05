@@ -14,13 +14,13 @@ interface Employee {
 export async function markWeekend() {
   const result = (await prisma.$queryRaw`
     SELECT
-		e.id,
-        e.employee_code,
-        e.full_name,
-        e.email,
-        s.name AS shift_name,
-        s.start_time,
-	    CURRENT_DATE AS adate
+		  e.id,
+      e.employee_code,
+      e.full_name,
+      e.email,
+      s.name AS shift_name,
+      s.start_time,
+	    DATE_FORMAT(CURRENT_DATE, '%Y-%m-%d') AS adate
     FROM Employee e
     INNER JOIN EmployeeShift es ON e.id = es.employee_id
     INNER JOIN Shift s ON es.shift_id = s.id

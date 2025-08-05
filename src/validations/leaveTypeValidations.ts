@@ -1,10 +1,26 @@
-import { z } from 'zod';
+import { z } from "zod";
 
 export const leaveTypeSchema = z.object({
-  name: z.enum(['sick', 'casual', 'annual']),
-  total_quota: z.number().min(0),
-  is_active: z.boolean().optional().default(true),
-  is_deleted: z.boolean().optional().default(false)
+  name: z.string({
+    required_error: "Leave type name is required",
+    invalid_type_error: "Leave type name must be a string",
+  }),
+  total_quota: z
+    .number({
+      required_error: "Total quota is required",
+      invalid_type_error: "Total quota must be a number",
+    })
+    .min(0),
+});
+
+export const leaveTypeUpdateSchema = leaveTypeSchema.extend({
+  leave_type_id: z
+    .number({
+      required_error: "Leave type ID is required",
+      invalid_type_error: "Leave type ID must be a number",
+    })
+    .int("Leave type ID must be an integer"),
 });
 
 export type LeaveType = z.infer<typeof leaveTypeSchema>;
+export type LeaveTypeUpdate = z.infer<typeof leaveTypeUpdateSchema>;

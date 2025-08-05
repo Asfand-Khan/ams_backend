@@ -20,7 +20,7 @@ export async function markAbsent() {
         e.email,
         s.name AS shift_name,
         s.start_time,
-        CURRENT_DATE as adate
+        DATE_FORMAT(CURRENT_DATE, '%Y-%m-%d') AS adate
     FROM Employee e
     INNER JOIN EmployeeShift es ON e.id = es.employee_id
     INNER JOIN Shift s ON es.shift_id = s.id

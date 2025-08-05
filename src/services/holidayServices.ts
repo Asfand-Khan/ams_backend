@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../config/db";
 import { Holiday, HolidayUpdate } from "../validations/holidayValidations";
 
@@ -11,19 +12,40 @@ export const getAllHolidays = async () => {
 };
 
 export const createHoliday = async (holiday: Holiday) => {
-  const data: any = {
-    holiday_date: new Date(holiday.holiday_date),
-    title: holiday.title,
-  };
+  return await prisma.$transaction(async (tx) => {
+    const newHoliday = await tx.holiday.create({
+      data: {
+        holiday_date: holiday.holiday_date,
+        title: holiday.title,
+        description: holiday.description ?? null,
+      },
+    });
 
-  if (holiday.description) {
-    data.description = holiday.description;
-  }
+    const employees = await tx.employee.findMany({
+      where: {
+        is_active: true,
+        is_deleted: false,
+      },
+      select: { id: true },
+    });
 
-  const newHoliday = await prisma.holiday.create({
-    data,
+    if (employees.length === 0) {
+      return newHoliday;
+    }
+
+    const attendanceRecords: Prisma.AttendanceCreateManyInput[] = employees.map((emp) => ({
+      employee_id: emp.id,
+      date: holiday.holiday_date,
+      day_status: "holiday",
+    }));
+
+    await tx.attendance.createMany({
+      data: attendanceRecords,
+      skipDuplicates: true,
+    });
+
+    return newHoliday;
   });
-  return newHoliday;
 };
 
 export const updateHoliday = async (holiday: HolidayUpdate) => {
@@ -63,7 +85,7 @@ export const getHolidayById = async (id: number) => {
 export const getHolidayByDate = async (date: string) => {
   const holiday = await prisma.holiday.findUnique({
     where: {
-      holiday_date: new Date(date),
+      holiday_date: date,
     },
   });
   return holiday;
