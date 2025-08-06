@@ -64,17 +64,6 @@ export const shiftSchema = z
       .min(0, "Break duration cannot be negative.")
       .default(0),
   })
-//   .refine(
-//     (data) => {
-//       const start = Date.parse(`1970-01-01T${data.start_time}Z`);
-//       const end = Date.parse(`1970-01-01T${data.end_time}Z`);
-//       return end > start;
-//     },
-//     {
-//       message: "End time must be greater than start time.",
-//       path: ["end_time"],
-//     }
-//   );
 
 export const shiftUpdateSchema = shiftSchema.extend({
   shift_id: z
