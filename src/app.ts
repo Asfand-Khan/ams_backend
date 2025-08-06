@@ -6,14 +6,12 @@ import logger from "./config/logger";
 import morgan from "morgan";
 import path from "path";
 import initializeCronJobs from "./jobs/cronJobs";
-import { swaggerUi, swaggerSpec } from "./config/swagger";
 
 export default (app: express.Application): void => {
-  app.use(express.json(({ limit: '10mb' })));
+  app.use(express.json({ limit: "10mb" }));
   app.use(cors());
   app.use(helmet());
 
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
   app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
   app.use(
@@ -54,7 +52,7 @@ export default (app: express.Application): void => {
   });
 
   initializeCronJobs();
-  
+
   app.use(
     (
       err: Error,
