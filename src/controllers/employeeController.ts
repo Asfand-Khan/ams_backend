@@ -9,6 +9,7 @@ import {
   changeEmployeePassword,
   createEmployee,
   getAllEmployees,
+  getAllUsersWithEmployee,
   getEmployeeByCnic,
   getEmployeeByCode,
   getEmployeeByEmail,
@@ -246,6 +247,24 @@ export const getAllEmployeesHandler = async (req: Request, res: Response) => {
     return res.status(200).json({
       status: 1,
       message: "All employees fetched successfully",
+      payload: employees,
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+export const getAllUsersHandler = async (req: Request, res: Response) => {
+  try {
+    const employees = await getAllUsersWithEmployee();
+    return res.status(200).json({
+      status: 1,
+      message: "All users fetched successfully",
       payload: employees,
     });
   } catch (error) {

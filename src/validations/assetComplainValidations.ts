@@ -64,7 +64,9 @@ export const assetComplaintRequestListingSchema = z.object({
   employee_id: z
     .number({ required_error: "Employee ID is required" })
     .int("Employee ID must be an integer")
-    .positive("Employee ID must be a positive number"),
+    .positive("Employee ID must be a positive number")
+    .nullable()
+    .optional(),
   status: z
     .enum(["pending", "in_progress", "rejected", "resolved"])
     .nullable()
@@ -78,6 +80,19 @@ export const assetComplaintRequestSingleSchema = z.object({
     .positive("Complaint ID must be a positive number"),
 });
 
+export const assetComplaintRequestUpdateSchema = z.object({
+  complaint_id: z
+    .number({ required_error: "Complaint ID is required" })
+    .int("Complaint ID must be an integer")
+    .positive("Complaint ID must be a positive number"),
+
+  status: z.enum(["pending", "in_progress", "rejected", "resolved"]),
+  remarks: z.string({
+    required_error: "Remarks is required",
+    invalid_type_error: "Remarks must be a string",
+  }),
+});
+
 export type AssetComplaintRequestCreate = z.infer<
   typeof assetComplaintRequestCreateSchema
 >;
@@ -86,4 +101,7 @@ export type AssetComplaintRequestListing = z.infer<
 >;
 export type AssetComplaintRequestSingle = z.infer<
   typeof assetComplaintRequestSingleSchema
+>;
+export type AssetComplaintRequestUpdate = z.infer<
+  typeof assetComplaintRequestUpdateSchema
 >;

@@ -3,6 +3,7 @@ import {
   changeEmployeePasswordHandler,
   createEmployeeHandler,
   getAllEmployeesHandler,
+  getAllUsersHandler,
   getEmployeeProfileHandler,
   updateEmployeeProfileHandler,
 } from "../controllers/employeeController";
@@ -15,5 +16,6 @@ router.post("/", authenticate, createEmployeeHandler);
 router.post("/change-password", changeEmployeePasswordHandler);
 router.post("/profile", getEmployeeProfileHandler);
 router.put("/update-profile", updateEmployeeProfileHandler);
+router.get("/users", getAllUsersHandler);
 
 export default router;

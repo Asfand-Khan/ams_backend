@@ -1,6 +1,16 @@
 import { Request, Response } from "express";
-import { assetComplaintRequestCreateSchema, assetComplaintRequestListingSchema, assetComplaintRequestSingleSchema } from "../validations/assetComplainValidations";
-import { assetComplaintListing, assetComplaintSingle, createAssetComplaint } from "../services/assetComplaintServices";
+import {
+  assetComplaintRequestCreateSchema,
+  assetComplaintRequestListingSchema,
+  assetComplaintRequestSingleSchema,
+  assetComplaintRequestUpdateSchema,
+} from "../validations/assetComplainValidations";
+import {
+  assetComplaintListing,
+  assetComplaintSingle,
+  assetComplaintUpdate,
+  createAssetComplaint,
+} from "../services/assetComplaintServices";
 import { handleAppError } from "../utils/appErrorHandler";
 
 // Module --> Asset Complaint
@@ -30,7 +40,6 @@ export const createAssetComplaintHandler = async (
     });
   }
 };
-
 
 // Module --> Asset Complaint
 // Method --> POST (Protected)
@@ -76,6 +85,34 @@ export const getSingleAssetComplaintHandler = async (
     return res.status(200).json({
       status: 1,
       message: "Asset complaint fetched successfully",
+      payload: complaint,
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Asset Complaint
+// Method --> PUT (Protected)
+// Endpoint --> /api/v1/asset-complaints/
+// Description --> Update Asset Complaint
+export const updateAssetComplaintHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = assetComplaintRequestUpdateSchema.parse(req.body);
+
+    const complaint = await assetComplaintUpdate(parsedData);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Asset complaint updated successfully",
       payload: complaint,
     });
   } catch (error) {

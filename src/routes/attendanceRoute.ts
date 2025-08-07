@@ -7,6 +7,7 @@ import {
   getAttendanceByIdHandler,
   getAttendanceHandler,
   getAttendanceSummaryHandler,
+  getDailyAttendanceSummaryHandler,
   getSingleAttendanceHandler,
   updateAttendanceHandler,
 } from "../controllers/attendanceController";
@@ -22,5 +23,6 @@ router.post("/check-in", checkInHandler);
 router.post("/check-out", checkOutHandler);
 router.post("/single-attendance", getSingleAttendanceHandler);
 router.post("/summary", getAttendanceSummaryHandler);
+router.get("/daily-attendance-summary", getDailyAttendanceSummaryHandler);
 
 export default router;

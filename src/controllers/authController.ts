@@ -91,14 +91,14 @@ export const sendOtpHandler = async (
       });
     }
 
-    // await sendEmail({
-    //   to: userByUsername.email,
-    //   subject: "Orio Connect - OTP for login",
-    //   html: getOTPTemplate(
-    //     userByUsername.otp_token,
-    //     userByUsername.employee?.full_name || userByUsername.username
-    //   ),
-    // });
+    await sendEmail({
+      to: userByUsername.email,
+      subject: "Orio Connect - OTP for login",
+      html: getOTPTemplate(
+        userByUsername.otp_token,
+        userByUsername.employee?.full_name || userByUsername.username
+      ),
+    });
 
     return res.status(200).json({
       status: 1,

@@ -311,3 +311,19 @@ export const updateEmployeeProfile = async (data: EmployeeUpdateProfile) => {
 
   return updatedEmployee;
 };
+
+export const getAllUsersWithEmployee = async () => {
+  const allEmployees = await prisma.user.findMany({
+    where: {
+      is_deleted: false,
+    },
+    include: {
+      employee: {
+        select: {
+          full_name: true,
+        },
+      },
+    },
+  });
+  return allEmployees;
+};

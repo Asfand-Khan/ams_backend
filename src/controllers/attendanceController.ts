@@ -15,6 +15,7 @@ import {
   addAttendance,
   attendanceById,
   attendanceSummary,
+  dailyAttendanceSummary,
   getAttendance,
   getAttendanceByDate,
   getEmployeeAttendance,
@@ -460,6 +461,32 @@ export const getAttendanceByIdHandler = async (
       status: 1,
       message: "Fetched attendance by ID successfully",
       payload: [attendance],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance
+// Method --> GET (Protected)
+// Endpoint --> /api/v1/attendances/daily-attendance-summary
+// Description --> Get daily attendance summary
+export const getDailyAttendanceSummaryHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const summary = await dailyAttendanceSummary();
+
+    return res.status(200).json({
+      status: 1,
+      message: "Fetched daily attendance summary successfully",
+      payload: summary,
     });
   } catch (error) {
     const err = handleAppError(error);

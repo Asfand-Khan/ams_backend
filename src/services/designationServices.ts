@@ -9,6 +9,13 @@ export const getAllDesignations = async () => {
     where: {
       is_deleted: false,
     },
+    include: {
+      department: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
   return allDesignations;
 };

@@ -3,6 +3,7 @@ import {
   AssetComplaintRequestCreate,
   AssetComplaintRequestListing,
   AssetComplaintRequestSingle,
+  AssetComplaintRequestUpdate,
 } from "../validations/assetComplainValidations";
 
 export const createAssetComplaint = async (
@@ -24,9 +25,11 @@ export const createAssetComplaint = async (
 export const assetComplaintListing = async (
   data: AssetComplaintRequestListing
 ) => {
-  let whereClause = {
-    employee_id: data.employee_id,
-  } as any;
+  let whereClause = {} as any;
+
+  if (data.status) {
+    whereClause["employee_id"] = data.employee_id;
+  }
 
   if (data.status) {
     whereClause["status"] = data.status;
@@ -34,6 +37,13 @@ export const assetComplaintListing = async (
 
   const complaints = await prisma.assetComplaintRequest.findMany({
     where: whereClause,
+    include: {
+      requested_by_employee: {
+        select: {
+          full_name: true,
+        },
+      },
+    },
   });
 
   return complaints;
@@ -45,6 +55,22 @@ export const assetComplaintSingle = async (
   const complaint = await prisma.assetComplaintRequest.findUnique({
     where: {
       id: data.complaint_id,
+    },
+  });
+
+  return complaint;
+};
+
+export const assetComplaintUpdate = async (
+  data: AssetComplaintRequestUpdate
+) => {
+  const complaint = await prisma.assetComplaintRequest.update({
+    where: {
+      id: data.complaint_id,
+    },
+    data: {
+      status: data.status,
+      resolution_remarks: data.remarks,
     },
   });
 

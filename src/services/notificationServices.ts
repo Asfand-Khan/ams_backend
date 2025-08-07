@@ -62,6 +62,14 @@ export const allNotifications = async (data: AllNotification) => {
   } else {
     notifications = await prisma.notification.findMany({
       orderBy: { created_at: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+          },
+        },
+      },
     });
   }
   return notifications;

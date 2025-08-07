@@ -284,6 +284,36 @@ export const getAttendanceByDate = async (data: AttendanceByDate) => {
   return attendanceByDate;
 };
 
+export const dailyAttendanceSummary = async () => {
+  const result: any =  await prisma.$queryRaw`
+    SELECT
+      COUNT(DISTINCT e.id) AS total_employees,
+      SUM(CASE WHEN a.day_status = 'present' THEN 1 ELSE 0 END) AS present,
+      SUM(CASE WHEN a.day_status = 'leave' THEN 1 ELSE 0 END) AS on_leave,
+      SUM(CASE WHEN a.day_status = 'weekend' THEN 1 ELSE 0 END) AS weekend,
+      SUM(CASE WHEN a.day_status = 'work_from_home' THEN 1 ELSE 0 END) AS work_from_home,
+      SUM(CASE WHEN a.day_status IS NULL OR a.day_status = 'absent' THEN 1 ELSE 0 END) AS absent,
+      SUM(CASE WHEN a.check_in_status = 'late' THEN 1 ELSE 0 END) AS late_arrivals,
+      SUM(CASE WHEN a.check_in_status = 'manual' THEN 1 ELSE 0 END) AS manual_check_in,
+      SUM(CASE WHEN a.check_out_status = 'early_leave' OR a.check_out_status = 'early_go' THEN 1 ELSE 0 END) AS early_leaves,
+      SUM(CASE WHEN a.check_out_status = 'half_day' THEN 1 ELSE 0 END) AS half_days,
+      SUM(CASE WHEN a.check_out_status = 'overtime' THEN 1 ELSE 0 END) AS overtimes,
+      SUM(CASE WHEN a.check_out_status = 'manual' THEN 1 ELSE 0 END) AS manual_check_out
+    FROM Employee e
+    LEFT JOIN Attendance a
+      ON e.id = a.employee_id AND a.date = CURDATE()
+    WHERE e.status = 'active' AND e.is_active = 1 AND e.is_deleted = 0;
+  `;
+
+  const summary = result[0];
+
+  const formatted = Object.fromEntries(
+    Object.entries(summary).map(([key, value]) => [key, typeof value === 'bigint' ? Number(value) : value])
+  );
+
+  return [formatted];
+};
+
 // export const getDayStatus = (
 //   checkInStatus: string | null,
 //   checkOutStatus: string | null,
