@@ -70,6 +70,7 @@ export const attendanceCorrectionListing = async (
         },
       },
     },
+    orderBy: { created_at: "desc" },
   });
 
   return correction;

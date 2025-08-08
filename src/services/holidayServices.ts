@@ -7,6 +7,7 @@ export const getAllHolidays = async () => {
     where: {
       is_deleted: false,
     },
+    orderBy: { created_at: "desc" },
   });
   return holidays;
 };

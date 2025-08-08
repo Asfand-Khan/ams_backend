@@ -44,6 +44,9 @@ export const assetComplaintListing = async (
         },
       },
     },
+    orderBy: {
+      created_at: "desc",
+    }
   });
 
   return complaints;

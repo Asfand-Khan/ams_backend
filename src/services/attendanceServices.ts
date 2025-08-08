@@ -184,7 +184,7 @@ export const getAttendance = async (data: Attendance) => {
           WHERE
 	          emp.id = ${data.employee_id}
           ORDER BY
-	          d.date;
+	          d.date DESC;
       `;
 
   // await prisma.$queryRaw`

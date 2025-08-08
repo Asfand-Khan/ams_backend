@@ -99,6 +99,7 @@ export const allLeaves = async (data: LeaveListing) => {
     LEFT JOIN Employee emp ON l.employee_id = emp.id
     LEFT JOIN Employee approver ON l.approved_by = approver.id
     ${whereClause}
+    ORDER BY l.created_at DESC
   `;
 
   const leaves = await prisma.$queryRawUnsafe(query, ...parameters);
