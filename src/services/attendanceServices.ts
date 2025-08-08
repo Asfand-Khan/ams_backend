@@ -14,6 +14,19 @@ type WorkStatus =
   | "on_time"
   | "overtime";
 
+function secondsToHHMMSS(seconds: number): string {
+  const h = Math.floor(seconds / 3600)
+    .toString()
+    .padStart(2, "0");
+  const m = Math.floor((seconds % 3600) / 60)
+    .toString()
+    .padStart(2, "0");
+  const s = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
+  return `${h}:${m}:${s}`;
+}
+
 export const getEmployeeShift = async (employee_id: number) => {
   const result = await prisma.$transaction(async (tx) => {
     const employeeShift = await tx.employeeShift.findFirst({
@@ -285,7 +298,7 @@ export const getAttendanceByDate = async (data: AttendanceByDate) => {
 };
 
 export const dailyAttendanceSummary = async () => {
-  const result: any =  await prisma.$queryRaw`
+  const result: any = await prisma.$queryRaw`
     SELECT
       COUNT(DISTINCT e.id) AS total_employees,
       SUM(CASE WHEN a.day_status = 'present' THEN 1 ELSE 0 END) AS present,
@@ -308,12 +321,99 @@ export const dailyAttendanceSummary = async () => {
   const summary = result[0];
 
   const formatted = Object.fromEntries(
-    Object.entries(summary).map(([key, value]) => [key, typeof value === 'bigint' ? Number(value) : value])
+    Object.entries(summary).map(([key, value]) => [
+      key,
+      typeof value === "bigint" ? Number(value) : value,
+    ])
   );
 
   return [formatted];
 };
 
+export const attendanceSummaryV2 = async (
+  employee_id: number,
+  start_date: string,
+  end_date: string
+) => {
+  const query = `
+    WITH RECURSIVE DateRange AS (
+      SELECT '${start_date}' AS date
+      UNION ALL
+      SELECT DATE_ADD(date, INTERVAL 1 DAY)
+      FROM DateRange
+      WHERE date < '${end_date}'
+    ),
+    EmployeeDate AS (
+      SELECT 
+        e.id AS employee_id,
+        e.full_name,
+        d.name AS department_name,
+        des.title AS designation_title,
+        dr.date
+    FROM Employee e
+    JOIN Department d ON e.department_id = d.id
+    JOIN Designation des ON e.designation_id = des.id
+    CROSS JOIN DateRange dr
+    WHERE e.is_active = 1 AND e.is_deleted = 0
+    AND e.id = ${employee_id}
+    )
+    SELECT 
+      ed.employee_id,
+      ed.full_name AS employee_name,
+      ed.department_name,
+      ed.designation_title,
+      CAST(COUNT(*) AS CHAR) AS total_days,
+      SUM(CASE WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL THEN 1 ELSE 0 END) AS working_days,
+      SUM(CASE WHEN a.day_status = 'present' THEN 1 ELSE 0 END) AS present_days,
+      SUM(CASE WHEN COALESCE(a.day_status, 'absent') = 'absent' THEN 1 ELSE 0 END) AS absent_days,
+      SUM(CASE WHEN a.day_status = 'leave' THEN 1 ELSE 0 END) AS leave_days,
+      SUM(CASE WHEN DAYOFWEEK(ed.date) IN (1, 7) THEN 1 ELSE 0 END) AS weekend_days,
+      SUM(CASE WHEN a.day_status IN ('present', 'work_from_home') AND DAYOFWEEK(ed.date) IN (1, 7) THEN 1 ELSE 0 END) AS weekend_attendance_days,
+      SUM(CASE WHEN a.day_status = 'holiday' OR h.holiday_date IS NOT NULL THEN 1 ELSE 0 END) AS holiday_days,
+      SUM(CASE WHEN a.day_status = 'work_from_home' THEN 1 ELSE 0 END) AS work_from_home_days,
+      SUM(CASE WHEN a.check_in_status = 'on_time' THEN 1 ELSE 0 END) AS on_time_check_ins,
+      SUM(CASE WHEN a.check_in_status = 'late' THEN 1 ELSE 0 END) AS late_check_ins,
+      SUM(CASE WHEN a.check_in_status = 'manual' THEN 1 ELSE 0 END) AS manual_check_ins,
+      SUM(CASE WHEN a.check_out_status = 'on_time' THEN 1 ELSE 0 END) AS on_time_check_outs,
+      SUM(CASE WHEN a.check_out_status = 'early_leave' THEN 1 ELSE 0 END) AS early_leave_check_outs,
+      SUM(CASE WHEN a.check_out_status = 'early_go' THEN 1 ELSE 0 END) AS early_go_check_outs,
+      SUM(CASE WHEN a.check_out_status = 'overtime' THEN 1 ELSE 0 END) AS overtime_check_outs,
+      SUM(CASE WHEN a.check_out_status = 'half_day' THEN 1 ELSE 0 END) AS half_day_check_outs,
+      SUM(CASE WHEN a.check_out_status = 'manual' THEN 1 ELSE 0 END) AS manual_check_outs,
+      COALESCE(SUM(
+        CASE 
+        WHEN a.day_status IN ('present', 'work_from_home') 
+        AND a.work_hours REGEXP '^[0-9]{2}:[0-9]{2}:[0-9]{2}$'
+        THEN TIME_TO_SEC(a.work_hours)
+        ELSE 0
+        END
+      ), 0) AS actual_work_seconds,
+      SUM(CASE 
+        WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL
+        THEN 8 
+        ELSE 0 
+      END) AS expected_work_hours
+    FROM EmployeeDate ed
+    LEFT JOIN Attendance a 
+      ON ed.employee_id = a.employee_id 
+      AND ed.date = a.date
+      AND a.is_active = 1 AND a.is_deleted = 0
+    LEFT JOIN Holiday h 
+      ON ed.date = h.holiday_date 
+      AND h.is_active = 1 AND h.is_deleted = 0
+    GROUP BY 
+      ed.employee_id, ed.full_name, ed.department_name, ed.designation_title
+    ORDER BY 
+      ed.employee_id
+`;
+
+  const attendanceSummary = await prisma.$queryRawUnsafe(query) as any[];
+  // Format time safely in JS
+  return attendanceSummary.map((row: any) => ({
+    ...row,
+    actual_work_hours: secondsToHHMMSS(row.actual_work_seconds),
+  }));
+};
 // export const getDayStatus = (
 //   checkInStatus: string | null,
 //   checkOutStatus: string | null,

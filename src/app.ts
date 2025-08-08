@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import routes from "./routes";
+import v1Routes from "./routes";
+import v2Routes from "./routes/v2";
 import logger from "./config/logger";
 import morgan from "morgan";
 import path from "path";
@@ -45,7 +46,8 @@ export default (app: express.Application): void => {
     })
   );
 
-  app.use("/api/v1", routes);
+  app.use("/api/v1", v1Routes);
+  app.use("/api/v2", v2Routes);
 
   app.use((req, res, next) => {
     res.status(404).json({ message: "API Route Not Found" });

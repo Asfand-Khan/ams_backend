@@ -15,6 +15,7 @@ import {
   addAttendance,
   attendanceById,
   attendanceSummary,
+  attendanceSummaryV2,
   dailyAttendanceSummary,
   getAttendance,
   getAttendanceByDate,
@@ -487,6 +488,37 @@ export const getDailyAttendanceSummaryHandler = async (
       status: 1,
       message: "Fetched daily attendance summary successfully",
       payload: summary,
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Attendance
+// Method --> GET (Protected)
+// Endpoint --> /api/v2/attendances/summary
+// Description --> Fetch attendance summary
+export const getAttendanceSummaryV2Handler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = attendanceSummarySchema.parse(req.body);
+    const attSummary = await attendanceSummaryV2(
+      parsedData.employee_id,
+      parsedData.start_date,
+      parsedData.end_date
+    );
+
+    return res.status(200).json({
+      status: 1,
+      message: "Fetched attendance summary successfully",
+      payload: attSummary,
     });
   } catch (error) {
     const err = handleAppError(error);
