@@ -14,7 +14,7 @@ type WorkStatus =
   | "on_time"
   | "overtime";
 
-function secondsToHHMMSS(seconds: number): string {
+export function secondsToHHMMSS(seconds: number): string {
   const h = Math.floor(seconds / 3600)
     .toString()
     .padStart(2, "0");

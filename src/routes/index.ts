@@ -15,6 +15,7 @@ import teamRoutes from "./teamRoutes";
 import holidayRoutes from "./holidayRoutes";
 import designationRoutes from "./designationRoutes";
 import shiftRoutes from "./shiftRoutes";
+import reportingRoutes from "./reportingRoutes";
 
 const router = Router();
 
@@ -34,6 +35,7 @@ router.use("/teams", teamRoutes);
 router.use("/holidays", holidayRoutes);
 router.use("/designations", designationRoutes);
 router.use("/shifts", shiftRoutes);
+router.use("/reporting", reportingRoutes);
 
 router.get("/", (req, res) => {
   const dateObj = new Date();
