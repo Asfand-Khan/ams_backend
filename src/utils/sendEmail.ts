@@ -15,14 +15,11 @@ interface SendEmailOptions {
 export const sendEmail = async (options: SendEmailOptions) => {
   const transporter: Transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: Number(process.env.SMTP_PORT) || 587,
+    port: 465,
     secure: true,
     auth: {
-      user: process.env.SMTP_EMAIL,
+      user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
-    },
-    tls: {
-      rejectUnauthorized: false,
     },
   } as SMTPTransport.Options);
 
@@ -36,9 +33,7 @@ export const sendEmail = async (options: SendEmailOptions) => {
   });
 
   const mailOptions: SMTPTransport.Options = {
-    from: `"${options.fromName || "Orio Attendance"}" <${
-      process.env.SMTP_EMAIL
-    }>`,
+    from: `"${options.fromName || "Orio Connect"}" <${process.env.SMTP_FROM}>`,
     to: options.to,
     subject: options.subject,
     html: options.html,
@@ -55,12 +50,3 @@ export const sendEmail = async (options: SendEmailOptions) => {
     throw new Error(`Email send error: ${JSON.stringify(error)}`);
   }
 };
-
-// GMAIL SMTP TRANSPORTER
-// const transporter: Transporter = nodemailer.createTransport({
-//   service: "gmail",
-//   auth: {
-//     user: process.env.GMAIL_SMTP_USER,
-//     pass: process.env.GMAIL_SMTP_PASS, // App Password here
-//   },
-// });

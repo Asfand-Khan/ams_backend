@@ -13,6 +13,10 @@ import {
 } from "./attendanceServices";
 import { getCheckInStatus } from "../utils/getCheckInStatus";
 import { getWorkStatus } from "../utils/getWorkStatusAndHours";
+import { sendEmail } from "../utils/sendEmail";
+import { getEmployeeByEmail, getEmployeeById } from "./employeeServices";
+import { getAttendanceCorrectionRequestTemplate } from "../utils/attendanceCorrectionRequestTemplate";
+import { format } from "date-fns-tz";
 
 export const createAttendanceCorrection = async (
   data: AttendanceCorrectionCreate,
@@ -30,6 +34,45 @@ export const createAttendanceCorrection = async (
       original_check_out: attendance ? attendance.check_out_time : null,
     },
   });
+
+  const employee = (await prisma.$queryRaw`
+    SELECT
+	    emp.id,
+  	  emp.email AS 'employee_email',
+	    tl.email AS 'team_lead_email',
+	    (SELECT email FROM User u WHERE u.type = 'hr') AS 'hr_email'
+    FROM
+	    Employee emp
+	  LEFT JOIN TeamMember tm ON emp.id = tm.employee_id
+	  LEFT JOIN Team t ON t.id = tm.team_id
+	  LEFT JOIN Employee tl ON t.team_lead_id = tl.id
+    WHERE
+	  emp.id = ${data.employee_id};
+  `) as { id: number; employee_email: string; team_lead_email: string; hr_email: string }[];
+
+  if (employee.length === 0) throw new Error("Employee not found");
+
+  for (const emp of employee) {
+    await sendEmail({
+      to: emp.employee_email,
+      subject: `Orio Connect - Attendance Correction Request`,
+      cc: emp.hr_email,
+      bcc: emp.team_lead_email,
+      html: getAttendanceCorrectionRequestTemplate({
+        attendance_date: data.attendance_date,
+        reason: data.reason,
+        request_type: data.request_type,
+        id: correction.id.toString(),
+        original_check_in: correction.original_check_in,
+        original_check_out: correction.original_check_out,
+        requested_check_in: correction.requested_check_in,
+        requested_check_out: correction.requested_check_out,
+        status: correction.status,
+        created_at: format(correction.created_at, "yyyy-MM-dd HH:mm:ss"),
+        year: new Date().getFullYear().toString(),
+      }),
+    });
+  }
 
   return correction;
 };
