@@ -8,6 +8,9 @@ import {
 } from "../validations/leaveValidations";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
+import { sendEmail } from "../utils/sendEmail";
+import { getLeaveTemplate } from "../utils/getLeaveTemplate";
+import { format } from "date-fns-tz";
 
 // Extend dayjs with plugins
 dayjs.extend(utc);
@@ -37,7 +40,72 @@ export const createLeave = async (data: Leave, days: number) => {
         leave_type_id: data.leave_type_id,
         total_days: days,
       },
+      include: {
+        leave_type: {
+          select: {
+            name: true,
+          },
+        },
+        approver: {
+          select: {
+            full_name: true,
+          },
+        },
+      },
     });
+
+    const employee = (await prisma.$queryRaw`
+        SELECT
+          emp.id,
+          emp.full_name,
+          emp.email AS 'employee_email',
+          tl.email AS 'team_lead_email',
+          (SELECT email FROM User u WHERE u.type = 'hr') AS 'hr_email'
+        FROM
+          Employee emp
+        LEFT JOIN TeamMember tm ON emp.id = tm.employee_id
+        LEFT JOIN Team t ON t.id = tm.team_id
+        LEFT JOIN Employee tl ON t.team_lead_id = tl.id
+        WHERE
+        emp.id = ${data.employee_id};
+      `) as {
+      id: number;
+      employee_email: string;
+      team_lead_email: string;
+      hr_email: string;
+      full_name: string;
+    }[];
+
+    if (employee.length === 0) throw new Error("Employee not found");
+
+    for (const emp of employee) {
+      await sendEmail({
+        to: emp.employee_email,
+        subject: `ORIO CONNECT - LEAVE REQUEST ${leave.status.toUpperCase()}`,
+        cc: emp.hr_email,
+        bcc: emp.team_lead_email,
+        html: getLeaveTemplate({
+          status: leave.status,
+          applied_on: format(leave.applied_on, "yyyy-MM-dd", {
+            timeZone: "Asia/Karachi",
+          }),
+          name: emp.full_name,
+          leave_type_name: leave.leave_type.name,
+          reason: leave.reason ?? "",
+          start_date: leave.start_date,
+          end_date: leave.end_date,
+          total_days: leave.total_days.toString(),
+          remarks: leave.remarks ?? "",
+          approved_on: leave.approved_on
+            ? format(leave.approved_on, "yyyy-MM-dd", {
+                timeZone: "Asia/Karachi",
+              })
+            : "",
+          id: leave.id.toString(),
+          approved_by_name: leave.approver ? leave.approver.full_name : "",
+        }),
+      });
+    }
 
     return leave;
   } catch (error: any) {
@@ -167,8 +235,11 @@ export const leaveRejectApprove = async (
     throw new Error("Leave not found");
   }
 
+  let updatedLeave: any = null;
+
+  // If leave is being rejected
   if (data.status === "rejected") {
-    return prisma.leave.update({
+    updatedLeave = await prisma.leave.update({
       where: { id: leave.id },
       data: {
         status: "rejected",
@@ -176,67 +247,145 @@ export const leaveRejectApprove = async (
         approved_on: new Date(),
         approved_by: approved_by ?? null,
       },
+      include: {
+        approver: {
+          select: {
+            full_name: true,
+          },
+        },
+        leave_type: {
+          select: {
+            name: true,
+          },
+        },
+      },
     });
-  }
+  } else {
+    updatedLeave = await prisma.$transaction(
+      async (tx) => {
+        const start = dayjs(leave.start_date).tz("Asia/Karachi").startOf("day");
+        const end = dayjs(leave.end_date).tz("Asia/Karachi").startOf("day");
+        const leaveDays = end.diff(start, "day") + 1;
 
-  // If leave is being approved
-  const updatedLeave = await prisma.$transaction(
-    async (tx) => {
-      const start = dayjs(leave.start_date).tz("Asia/Karachi").startOf("day");
-      const end = dayjs(leave.end_date).tz("Asia/Karachi").startOf("day");
-      const leaveDays = end.diff(start, "day") + 1;
+        for (let i = 0; i < leaveDays; i++) {
+          const day = start.add(i, "day").format("YYYY-MM-DD");
 
-      for (let i = 0; i < leaveDays; i++) {
-        const day = start.add(i, "day").format("YYYY-MM-DD");
-
-        await tx.attendance.upsert({
-          where: {
-            employee_id_date: {
+          await tx.attendance.upsert({
+            where: {
+              employee_id_date: {
+                employee_id: data.employee_id,
+                date: day,
+              },
+            },
+            update: {
+              day_status: "leave",
+            },
+            create: {
               employee_id: data.employee_id,
               date: day,
+              day_status: "leave",
+            },
+          });
+        }
+
+        const quota = await tx.employeeLeaveQuota.findFirst({
+          where: {
+            employee_id: data.employee_id,
+            leave_type_id: leave.leave_type_id,
+          },
+        });
+
+        if (quota) {
+          await tx.employeeLeaveQuota.update({
+            where: { id: quota.id },
+            data: { used_days: quota.used_days + leaveDays },
+          });
+        }
+
+        const approvedLeave = await tx.leave.update({
+          where: { id: leave.id },
+          data: {
+            status: "approved",
+            remarks: data.remarks,
+            approved_on: new Date(),
+            approved_by: approved_by ?? null,
+          },
+          include: {
+            leave_type: {
+              select: {
+                name: true,
+              },
+            },
+            approver: {
+              select: {
+                full_name: true,
+              },
             },
           },
-          update: {
-            day_status: "leave",
-          },
-          create: {
-            employee_id: data.employee_id,
-            date: day,
-            day_status: "leave",
-          },
         });
+
+        return approvedLeave;
+      },
+      {
+        timeout: 30000, // 30 seconds
       }
+    );
+  }
 
-      const quota = await tx.employeeLeaveQuota.findFirst({
-        where: {
-          employee_id: data.employee_id,
-          leave_type_id: leave.leave_type_id,
-        },
-      });
+  const employee = (await prisma.$queryRaw`
+        SELECT
+          emp.id,
+          emp.full_name,
+          emp.email AS 'employee_email',
+          tl.email AS 'team_lead_email',
+          (SELECT email FROM User u WHERE u.type = 'hr') AS 'hr_email'
+        FROM
+          Employee emp
+        LEFT JOIN TeamMember tm ON emp.id = tm.employee_id
+        LEFT JOIN Team t ON t.id = tm.team_id
+        LEFT JOIN Employee tl ON t.team_lead_id = tl.id
+        WHERE
+        emp.id = ${data.employee_id};
+      `) as {
+    id: number;
+    employee_email: string;
+    team_lead_email: string;
+    hr_email: string;
+    full_name: string;
+  }[];
 
-      if (quota) {
-        await tx.employeeLeaveQuota.update({
-          where: { id: quota.id },
-          data: { used_days: quota.used_days + leaveDays },
-        });
-      }
+  if (employee.length === 0) throw new Error("Employee not found");
 
-      const approvedLeave = await tx.leave.update({
-        where: { id: leave.id },
-        data: {
-          status: "approved",
-          remarks: data.remarks,
-          approved_on: new Date(),
-          approved_by: approved_by ?? null,
-        },
-      });
-
-      return approvedLeave;
-    },
-    {
-      timeout: 30000, // 30 seconds
-    }
-  );
+  for (const emp of employee) {
+    await sendEmail({
+      to: emp.employee_email,
+      subject: `ORIO CONNECT - LEAVE REQUEST ${leave.status.toUpperCase()}`,
+      cc: emp.hr_email,
+      bcc: emp.team_lead_email,
+      html: getLeaveTemplate({
+        status: updatedLeave.status,
+        applied_on: format(updatedLeave.applied_on, "yyyy-MM-dd", {
+          timeZone: "Asia/Karachi",
+        }),
+        name: emp.full_name,
+        leave_type_name: updatedLeave.leave_type.name,
+        reason: updatedLeave.reason ?? "",
+        start_date: updatedLeave.start_date,
+        end_date: updatedLeave.end_date,
+        total_days: updatedLeave.total_days.toString(),
+        remarks: updatedLeave.remarks ?? "",
+        approved_on: updatedLeave.approved_on
+          ? format(updatedLeave.approved_on, "yyyy-MM-dd", {
+              timeZone: "Asia/Karachi",
+            })
+          : "",
+        id: updatedLeave.id.toString(),
+        approved_by_name: updatedLeave.approver
+          ? updatedLeave.approver.full_name
+          : "",
+      }),
+    });
+  }
 
   return updatedLeave;
 };
