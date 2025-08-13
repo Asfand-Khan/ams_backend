@@ -15,7 +15,10 @@ import { getCheckInStatus } from "../utils/getCheckInStatus";
 import { getWorkStatus } from "../utils/getWorkStatusAndHours";
 import { sendEmail } from "../utils/sendEmail";
 import { getEmployeeByEmail, getEmployeeById } from "./employeeServices";
-import { getAttendanceCorrectionRequestTemplate } from "../utils/attendanceCorrectionRequestTemplate";
+import {
+  getAttendanceCorrectionApproveTemplate,
+  getAttendanceCorrectionRequestTemplate,
+} from "../utils/attendanceCorrectionRequestTemplate";
 import { format } from "date-fns-tz";
 
 export const createAttendanceCorrection = async (
@@ -48,7 +51,12 @@ export const createAttendanceCorrection = async (
 	  LEFT JOIN Employee tl ON t.team_lead_id = tl.id
     WHERE
 	  emp.id = ${data.employee_id};
-  `) as { id: number; employee_email: string; team_lead_email: string; hr_email: string }[];
+  `) as {
+    id: number;
+    employee_email: string;
+    team_lead_email: string;
+    hr_email: string;
+  }[];
 
   if (employee.length === 0) throw new Error("Employee not found");
 
@@ -247,6 +255,53 @@ export const attendanceCorrectionRejectApprove = async (
         reviewed_on: new Date(),
         reviewed_by: reviewed_by ?? null,
       },
+    });
+  }
+
+  const employee = (await prisma.$queryRaw`
+    SELECT
+	    emp.id,
+      emp.full_name,
+  	  emp.email AS 'employee_email',
+	    tl.email AS 'team_lead_email',
+	    (SELECT email FROM User u WHERE u.type = 'hr') AS 'hr_email'
+    FROM
+	    Employee emp
+	  LEFT JOIN TeamMember tm ON emp.id = tm.employee_id
+	  LEFT JOIN Team t ON t.id = tm.team_id
+	  LEFT JOIN Employee tl ON t.team_lead_id = tl.id
+    WHERE
+	  emp.id = ${data.employee_id};
+  `) as {
+    id: number;
+    employee_email: string;
+    team_lead_email: string;
+    hr_email: string;
+    full_name: string;
+  }[];
+
+  if (employee.length === 0) throw new Error("Employee not found");
+
+  for (const emp of employee) {
+    await sendEmail({
+      to: emp.employee_email,
+      subject: `ORIO CONNECT - ATTENDANCE CORRECTION ${updatedCorrection.status.toUpperCase()}`,
+      cc: emp.hr_email,
+      bcc: emp.team_lead_email,
+      html: getAttendanceCorrectionApproveTemplate({
+        attendance_date: updatedCorrection.attendance_date,
+        reason: updatedCorrection.reason,
+        request_type: updatedCorrection.request_type,
+        id: updatedCorrection.id.toString(),
+        original_check_in: updatedCorrection.original_check_in,
+        original_check_out: updatedCorrection.original_check_out,
+        requested_check_in: updatedCorrection.requested_check_in,
+        requested_check_out: updatedCorrection.requested_check_out,
+        status: updatedCorrection.status,
+        created_at: format(updatedCorrection.created_at, "yyyy-MM-dd HH:mm:ss"),
+        year: new Date().getFullYear().toString(),
+        fullname: emp.full_name,
+      }),
     });
   }
 
