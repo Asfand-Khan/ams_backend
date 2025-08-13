@@ -292,6 +292,7 @@ export const getAttendanceByDate = async (data: AttendanceByDate) => {
 	      LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id 
         WHERE
 	        emp.is_deleted = FALSE
+        ORDER BY COALESCE(att.check_in_time, '9999-12-31 23:59:59') ASC
       `;
 
   return attendanceByDate;
@@ -414,55 +415,3 @@ export const attendanceSummaryV2 = async (
     actual_work_hours: secondsToHHMMSS(row.actual_work_seconds),
   }));
 };
-// export const getDayStatus = (
-//   checkInStatus: string | null,
-//   checkOutStatus: string | null,
-//   workingHours: number | null
-// ) => {
-//   if (!checkInStatus || !checkOutStatus || !workingHours)
-//     throw new Error(
-//       "Check-in status, check-out status, and working hours are required."
-//     );
-
-//   const normalizedCheckOutStatus =
-//     checkOutStatus === "early_go" ? "early_leave" : checkOutStatus;
-
-//   if (checkInStatus === "absent") {
-//     return "absent";
-//   } else if (
-//     checkInStatus === "manual" ||
-//     normalizedCheckOutStatus === "manual"
-//   ) {
-//     return "manual_present";
-//   } else if (
-//     (checkInStatus === "on_time" || checkInStatus === "late") &&
-//     (normalizedCheckOutStatus === "on_time" ||
-//       normalizedCheckOutStatus === "overtime") &&
-//     workingHours >= 8
-//   ) {
-//     return "present";
-//   } else if (
-//     (checkInStatus === "on_time" || checkInStatus === "late") &&
-//     normalizedCheckOutStatus === "early_leave" &&
-//     workingHours <= 3.99
-//   ) {
-//     return "early_leave";
-//   } else if (
-//     checkInStatus === "on_time" &&
-//     normalizedCheckOutStatus === "early_leave" &&
-//     workingHours > 3.99 &&
-//     workingHours < 8
-//   ) {
-//     return "early_leave";
-//   } else if (
-//     checkInStatus === "late" &&
-//     normalizedCheckOutStatus === "early_leave" &&
-//     workingHours >= 4 &&
-//     workingHours < 8
-//   ) {
-//     return "half_day";
-//   } else if (normalizedCheckOutStatus === "half_day" && workingHours <= 5) {
-//     return "half_day";
-//   }
-//   return "present"; // Default case for unhandled scenarios
-// };
