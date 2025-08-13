@@ -591,7 +591,7 @@ model Notification {
   id         Int              @id @default(autoincrement())
   user_id    Int?
   title      String           @db.VarChar(100)
-  message    String
+  message    String           @db.LongText
   type       NotificationType
   priority   Priority         @default(medium)
   status     Status           @default(unread)

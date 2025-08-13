@@ -27,7 +27,7 @@ export const assetComplaintListing = async (
 ) => {
   let whereClause = {} as any;
 
-  if (data.status) {
+  if (data.employee_id) {
     whereClause["employee_id"] = data.employee_id;
   }
 

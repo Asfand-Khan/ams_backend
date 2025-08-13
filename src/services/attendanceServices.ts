@@ -292,7 +292,7 @@ export const getAttendanceByDate = async (data: AttendanceByDate) => {
 	      LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id 
         WHERE
 	        emp.is_deleted = FALSE
-        ORDER BY COALESCE(att.check_in_time, '9999-12-31 23:59:59') ASC
+        ORDER BY COALESCE(att.check_in_time, '9999-12-31 23:59:58') ASC
       `;
 
   return attendanceByDate;
