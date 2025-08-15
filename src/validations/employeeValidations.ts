@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { nullable, z } from "zod";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
 const timeRegex = /^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$/;
@@ -87,7 +87,8 @@ export const employeeSchema = z.object({
   dob: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Date of birth must be in YYYY-MM-DD format")
-    .optional(),
+    .optional()
+    .nullable(),
 
   join_date: z
     .string({ required_error: "Join date is required" })
@@ -96,7 +97,8 @@ export const employeeSchema = z.object({
   leave_date: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/, "Leave date must be in YYYY-MM-DD format")
-    .optional(),
+    .optional()
+    .nullable(),
 
   department_id: z
     .number({ required_error: "Department ID is required" })

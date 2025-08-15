@@ -150,7 +150,7 @@ export const getAttendanceCorrectionRequestTemplate = ({
             <p><strong>Submitted On:</strong> ${created_at}</p>
         </div>
        <div class="footer">
-      &copy; ${year} Your Company. All rights reserved.
+      &copy; ${year} Orio. All rights reserved.
     </div>
     </div>
 </body>

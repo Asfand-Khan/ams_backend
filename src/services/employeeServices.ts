@@ -53,69 +53,74 @@ export const createEmployee = async (employee: Employee) => {
     data["gender"] = employee.gender;
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const newEmployee = await tx.employee.create({ data });
+  const result = await prisma.$transaction(
+    async (tx) => {
+      const newEmployee = await tx.employee.create({ data });
 
-    const leavesTypes = await prisma.leaveType.findMany();
+      const leavesTypes = await prisma.leaveType.findMany();
 
-    const user = await tx.user.create({
-      data: {
-        username: employee.username,
-        password_hash: generateRandomHex(16),
-        employee_id: newEmployee.id,
-        email: employee.email,
-        type: employee.emp_type,
-      },
-    });
-
-    if (employee.menu_rights && employee.menu_rights.length > 0) {
-      const menuRightsData = employee.menu_rights.map((right) => ({
-        user_id: user.id,
-        menu_id: right.menu_id,
-        can_view: right.can_view ?? true,
-        can_create: right.can_create ?? false,
-        can_edit: right.can_edit ?? false,
-        can_delete: right.can_delete ?? false,
-      }));
-
-      await prisma.userMenuRight.createMany({
-        data: menuRightsData,
-      });
-    }
-
-    await tx.employeeShift.create({
-      data: {
-        employee_id: newEmployee.id,
-        shift_id: employee.shift_id,
-        effective_from: new Date(),
-      },
-    });
-
-    if (employee.team_id) {
-      await tx.teamMember.create({
+      const user = await tx.user.create({
         data: {
+          username: employee.username,
+          password_hash: generateRandomHex(16),
           employee_id: newEmployee.id,
-          team_id: employee.team_id,
+          email: employee.email,
+          type: employee.emp_type,
         },
       });
-    }
 
-    for (const leaveType of leavesTypes) {
-      await tx.employeeLeaveQuota.create({
+      if (employee.menu_rights && employee.menu_rights.length > 0) {
+        const menuRightsData = employee.menu_rights.map((right) => ({
+          user_id: user.id,
+          menu_id: right.menu_id,
+          can_view: right.can_view ?? true,
+          can_create: right.can_create ?? false,
+          can_edit: right.can_edit ?? false,
+          can_delete: right.can_delete ?? false,
+        }));
+
+        await prisma.userMenuRight.createMany({
+          data: menuRightsData,
+        });
+      }
+
+      await tx.employeeShift.create({
         data: {
           employee_id: newEmployee.id,
-          leave_type_id: leaveType.id,
-          year: new Date().getFullYear(),
+          shift_id: employee.shift_id,
+          effective_from: new Date(),
         },
       });
-    }
 
-    return {
-      ...newEmployee,
-      username: user.username,
-      password: user.password_hash,
-    };
-  });
+      if (employee.team_id) {
+        await tx.teamMember.create({
+          data: {
+            employee_id: newEmployee.id,
+            team_id: employee.team_id,
+          },
+        });
+      }
+
+      for (const leaveType of leavesTypes) {
+        await tx.employeeLeaveQuota.create({
+          data: {
+            employee_id: newEmployee.id,
+            leave_type_id: leaveType.id,
+            year: new Date().getFullYear(),
+          },
+        });
+      }
+
+      return {
+        ...newEmployee,
+        username: user.username,
+        password: user.password_hash,
+      };
+    },
+    {
+      timeout: 30000,
+    }
+  );
 
   return result;
 };
@@ -319,8 +324,17 @@ export const getAllUsersWithEmployee = async () => {
     },
     include: {
       employee: {
-        select: {
-          full_name: true,
+        include: {
+          department: {
+            select: {
+              name: true,
+            }
+          },
+          designation: {
+            select: {
+              title: true,
+            }
+          },
         },
       },
     },

@@ -6,7 +6,7 @@ export const createNotificationSchema = z.object({
     .min(3, "Title must be at least 3 characters")
     .max(200, "Title must be at most 200 characters")
     .toUpperCase(),
-  message: z.string({ required_error: "Message is required" }).toLowerCase(),
+  message: z.string({ required_error: "Message is required" }),
   type: z.enum(
     ["attendance", "leave", "shift", "general", "alert", "holiday"],
     {

@@ -84,7 +84,7 @@ export const getNotificationTemplate = (
       <p>Sent at: ${sent_at}</p>
     </div>
     <div class="footer">
-      &copy; ${year} Your Company Name. All rights reserved.
+      &copy; ${year} Orio. All rights reserved.
     </div>
   </div>
 </body>
