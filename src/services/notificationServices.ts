@@ -52,7 +52,6 @@ export const createNotification = async (data: CreateNotification) => {
         subject: `Orio Connect - ${title}`,
         html: getNotificationTemplate(
           title,
-          user.username,
           type,
           message,
           priority,
@@ -68,24 +67,22 @@ export const createNotification = async (data: CreateNotification) => {
 
     // Emails for all users
     users = await prisma.user.findMany({
-      select: { email: true, username: true },
+      select: { email: true },
     });
 
-    for (const u of users) {
-      await sendEmail({
-        to: u.email,
-        subject: `Orio Connect - ${title}`,
-        html: getNotificationTemplate(
-          title,
-          u.username,
-          type,
-          message,
-          priority,
-          format(notification.sent_at, "yyyy-MM-dd HH:mm:ss"),
-          new Date().getFullYear().toString()
-        ),
-      });
-    }
+    const emailArray = users.map((u) => u.email);
+    await sendEmail({
+      to: emailArray,
+      subject: `Orio Connect - ${title}`,
+      html: getNotificationTemplate(
+        title,
+        type,
+        message,
+        priority,
+        format(notification.sent_at, "yyyy-MM-dd HH:mm:ss"),
+        new Date().getFullYear().toString()
+      ),
+    });
   }
 
   const tokenList = tokens.map((t) => t.token);

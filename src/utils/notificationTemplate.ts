@@ -1,6 +1,5 @@
 export const getNotificationTemplate = (
   title: string,
-  username: string,
   type: string,
   message: string,
   priority: string,
@@ -71,7 +70,7 @@ export const getNotificationTemplate = (
   <div class="container">
     <div class="header">${title}</div>
     <div class="content">
-      <p>Hello ${username},</p>
+      <p>Hello,</p>
       <p>You have a new <strong>${type}</strong> notification.</p>
       <div class="message">
         ${message}

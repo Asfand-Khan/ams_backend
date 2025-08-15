@@ -2,7 +2,7 @@ import nodemailer, { Transporter } from "nodemailer";
 import SMTPTransport from "nodemailer/lib/smtp-transport";
 
 interface SendEmailOptions {
-  to: string;
+  to: string | string[];
   subject: string;
   html?: string;
   text?: string;
@@ -32,14 +32,19 @@ export const sendEmail = async (options: SendEmailOptions) => {
     }
   });
 
+  const formatRecipients = (recipients: string | string[]) => {
+    if (!recipients) return undefined;
+    return Array.isArray(recipients) ? recipients.join(",") : recipients;
+  };
+
   const mailOptions: SMTPTransport.Options = {
     from: `"${options.fromName || "Orio Connect"}" <${process.env.SMTP_FROM}>`,
-    to: options.to,
+    to: formatRecipients(options.to),
     subject: options.subject,
     html: options.html,
     text: options.text,
-    bcc: options.bcc || undefined,
-    cc: options.cc || undefined,
+    cc: options.cc ? formatRecipients(options.cc) : undefined,
+    bcc: options.bcc ? formatRecipients(options.bcc) : undefined,
     attachments: options.attachments || undefined,
   };
 
