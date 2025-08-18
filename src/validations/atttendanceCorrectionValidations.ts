@@ -26,7 +26,13 @@ export const attendanceCorrectionCreateSchema = z.object({
     .refine(isValidPastOrTodayDate, "Attendance date cannot be in the future"),
 
   request_type: z.enum(
-    ["missed_check_in", "missed_check_out", "wrong_time", "both"],
+    [
+      "missed_check_in",
+      "missed_check_out",
+      "wrong_time",
+      "both",
+      "work_from_home",
+    ],
     {
       required_error: "Request type is required",
     }

@@ -216,7 +216,8 @@ export const getAttendance = async (data: Attendance) => {
 export const addAttendance = async (
   data: CreateAttendance,
   work_status: any,
-  check_in_status: any
+  check_in_status: any,
+  work_from_home?: boolean
 ) => {
   let dataToInsert = {
     employee_id: data.employee_id,
@@ -229,6 +230,8 @@ export const addAttendance = async (
     dataToInsert["work_hours"] = work_status.working_hours_formattted;
   if (work_status) dataToInsert["check_out_status"] = work_status.work_status;
   if (check_in_status) dataToInsert["check_in_status"] = check_in_status;
+
+  if (work_from_home) dataToInsert["day_status"] = "work_from_home";
 
   const attendance = await prisma.attendance.create({
     data: dataToInsert,
@@ -248,12 +251,15 @@ export const attendanceById = async (attendance_id: number) => {
 export const updateAttendance = async (
   data: UpdateAttendance,
   work_status: any,
-  check_in_status: any
+  check_in_status: any,
+  work_from_home?: boolean
 ) => {
   let dataToInsert = {
     date: data.attendance_date,
     day_status: "present",
   } as any;
+
+  if (work_from_home) dataToInsert["day_status"] = "work_from_home";
 
   if (data.check_in_time) dataToInsert["check_in_time"] = data.check_in_time;
   if (data.check_out_time) dataToInsert["check_out_time"] = data.check_out_time;
@@ -365,7 +371,7 @@ export const attendanceSummaryV2 = async (
       ed.designation_title,
       CAST(COUNT(*) AS CHAR) AS total_days,
       SUM(CASE WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL THEN 1 ELSE 0 END) AS working_days,
-      SUM(CASE WHEN a.day_status = 'present' THEN 1 ELSE 0 END) AS present_days,
+      SUM(CASE WHEN a.day_status IN ('present','work_from_home') THEN 1 ELSE 0 END) AS present_days,
       SUM(CASE WHEN COALESCE(a.day_status, 'absent') = 'absent' THEN 1 ELSE 0 END) AS absent_days,
       SUM(CASE WHEN a.day_status = 'leave' THEN 1 ELSE 0 END) AS leave_days,
       SUM(CASE WHEN DAYOFWEEK(ed.date) IN (1, 7) THEN 1 ELSE 0 END) AS weekend_days,
@@ -390,7 +396,7 @@ export const attendanceSummaryV2 = async (
         END
       ), 0) AS actual_work_seconds,
       SUM(CASE 
-        WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL
+        WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL AND a.day_status != 'leave'
         THEN 8 
         ELSE 0 
       END) AS expected_work_hours
@@ -408,7 +414,7 @@ export const attendanceSummaryV2 = async (
       ed.employee_id
 `;
 
-  const attendanceSummary = await prisma.$queryRawUnsafe(query) as any[];
+  const attendanceSummary = (await prisma.$queryRawUnsafe(query)) as any[];
   // Format time safely in JS
   return attendanceSummary.map((row: any) => ({
     ...row,

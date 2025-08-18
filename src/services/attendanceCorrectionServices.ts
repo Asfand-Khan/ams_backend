@@ -227,12 +227,11 @@ export const attendanceCorrectionRejectApprove = async (
           check_out_time: correction.requested_check_out,
         },
         work_status,
-        check_in_status
+        check_in_status,
+        true
       );
     } else {
       // Update Attendance Here
-      console.log("Update attendance");
-      console.log("work_status: ", work_status);
       await updateAttendance(
         {
           attendance_date: correction.attendance_date,
@@ -241,7 +240,8 @@ export const attendanceCorrectionRejectApprove = async (
           check_out_time: correction.requested_check_out,
         },
         work_status,
-        check_in_status
+        check_in_status,
+        true
       );
     }
 

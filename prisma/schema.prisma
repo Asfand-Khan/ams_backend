@@ -71,6 +71,7 @@ enum RequestType {
   missed_check_out
   wrong_time
   both
+  work_from_home
 }
 
 enum RequestStatus {

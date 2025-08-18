@@ -33,7 +33,7 @@ export const getOverallAttendanceSummaryReport = async (
             ed.designation_title,
             CAST(COUNT(*) AS CHAR) AS total_days,
             SUM(CASE WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL THEN 1 ELSE 0 END) AS working_days,
-            SUM(CASE WHEN a.day_status = 'present' THEN 1 ELSE 0 END) AS present_days,
+            SUM(CASE WHEN a.day_status IN ('present','work_from_home') THEN 1 ELSE 0 END) AS present_days,
             SUM(CASE WHEN COALESCE(a.day_status, 'absent') = 'absent' THEN 1 ELSE 0 END) AS absent_days,
             SUM(CASE WHEN a.day_status = 'leave' THEN 1 ELSE 0 END) AS leave_days,
             SUM(CASE WHEN DAYOFWEEK(ed.date) IN (1, 7) THEN 1 ELSE 0 END) AS weekend_days,
@@ -59,7 +59,7 @@ export const getOverallAttendanceSummaryReport = async (
             ), 0) AS actual_work_seconds,
             SUM(
                 CASE 
-                    WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL
+                    WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL AND a.day_status != 'leave'
                     THEN 8 
                     ELSE 0 
                 END
