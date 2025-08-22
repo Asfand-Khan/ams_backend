@@ -228,7 +228,7 @@ export const attendanceCorrectionRejectApprove = async (
         },
         work_status,
         check_in_status,
-        true
+        correction.request_type === "work_from_home" ? true : false
       );
     } else {
       // Update Attendance Here
@@ -241,7 +241,7 @@ export const attendanceCorrectionRejectApprove = async (
         },
         work_status,
         check_in_status,
-        true
+        correction.request_type === "work_from_home" ? true : false
       );
     }
 
