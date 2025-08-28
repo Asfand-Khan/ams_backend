@@ -15,6 +15,7 @@ import teamRoutes from "./teamRoutes";
 import holidayRoutes from "./holidayRoutes";
 import designationRoutes from "./designationRoutes";
 import shiftRoutes from "./shiftRoutes";
+import meetingRoutes from "./meetingRoutes";
 import reportingRoutes from "./reportingRoutes";
 
 const router = Router();
@@ -35,6 +36,7 @@ router.use("/teams", teamRoutes);
 router.use("/holidays", holidayRoutes);
 router.use("/designations", designationRoutes);
 router.use("/shifts", shiftRoutes);
+router.use("/meetings", meetingRoutes);
 router.use("/reporting", reportingRoutes);
 
 router.get("/", (req, res) => {
@@ -44,7 +46,7 @@ router.get("/", (req, res) => {
 
   res.status(200).json({
     status: 1,
-    message: "Asset complaints fetched successfully",
+    message: "Welcome to root API",
     payload: `${date} - ${time}`,
   });
 });

@@ -135,6 +135,7 @@ enum NotificationType {
   general
   alert
   holiday
+  meeting
 }
 
 enum Priority {
@@ -147,6 +148,25 @@ enum Status {
   sent
   read
   unread
+}
+
+enum RecurrenceType {
+  daily
+  one_time
+  weekly
+  monthly
+}
+
+enum LocationType {
+  physical
+  online
+}
+
+enum MeetingStatus {
+  scheduled
+  in_progress
+  completed
+  cancelled
 }
 
 ///////////////////// ENUMS /////////////////////////////////
@@ -236,9 +256,15 @@ model Employee {
   // ✅ Attendance Correction Requests reviewed by this Employee
   attendanceCorrectionRequestsReviewed AttendanceCorrectionRequest[] @relation("EmployeeReviewedAttendanceCorrectionRequests")
 
-  /// ✅ Added Asset Complaint Relations
+  // ✅ Added Asset Complaint Relations
   assetComplaintRequestsCreated  AssetComplaintRequest[] @relation("EmployeeAssetComplaintRequests")
   assetComplaintRequestsReviewed AssetComplaintRequest[] @relation("EmployeeReviewedAssetComplaintRequests")
+
+  // ✅ Added Meeting Attendees Relations
+  MeetingAttendee MeetingAttendee[]
+
+  // ✅ Added Meeting Host Relations
+  MeetingHost Meeting[] @relation("MeetingHost")
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
@@ -618,6 +644,83 @@ model FCMToken {
   user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
+}
+
+model Meeting {
+  id                    Int            @id @default(autoincrement())
+  title                 String         @db.VarChar(100)
+  recurrence_rule       String        @db.VarChar(191)
+  recurrence_type       RecurrenceType @default(one_time)
+  start_time            String
+  end_time              String
+  recurrence_start_date String
+  recurrence_end_date   String
+  host_id               Int
+  location_type         LocationType
+  location_details      String         @db.Text
+  agenda                String?        @db.Text
+  status                MeetingStatus  @default(scheduled)
+  is_active             Boolean        @default(true)
+  is_deleted            Boolean        @default(false)
+  created_at            DateTime       @default(now())
+  updated_at            DateTime       @updatedAt
+
+  // Relations
+  meeting_host Employee @relation("MeetingHost", fields: [host_id], references: [id])
+
+  instances MeetingInstance[]
+  attendees MeetingAttendee[]
+  minutes   MeetingMinutes[]
+}
+
+model MeetingInstance {
+  id            Int           @id @default(autoincrement())
+  meeting_id    Int
+  instance_date String
+  start_time    String
+  end_time      String
+  status        MeetingStatus @default(scheduled)
+  is_active     Boolean       @default(true)
+  is_deleted    Boolean       @default(false)
+  created_at    DateTime      @default(now())
+  updated_at    DateTime      @updatedAt
+
+  // Relations
+  meeting   Meeting           @relation(fields: [meeting_id], references: [id])
+  attendees MeetingAttendee[]
+  minutes   MeetingMinutes[]
+}
+
+model MeetingAttendee {
+  id                  Int      @id @default(autoincrement())
+  meeting_id          Int
+  meeting_instance_id Int?
+  employee_id         Int
+  attended            Boolean  @default(false)
+  is_active           Boolean  @default(true)
+  is_deleted          Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  // Relations
+  meeting  Meeting          @relation(fields: [meeting_id], references: [id])
+  instance MeetingInstance? @relation(fields: [meeting_instance_id], references: [id])
+  employee Employee         @relation(fields: [employee_id], references: [id])
+}
+
+model MeetingMinutes {
+  id                  Int      @id @default(autoincrement())
+  meeting_id          Int
+  meeting_instance_id Int?
+  minutes             String   @db.LongText
+  is_active           Boolean  @default(true)
+  is_deleted          Boolean  @default(false)
+  created_at          DateTime @default(now())
+  created_by          Int
+
+  // Relations
+  meeting  Meeting          @relation(fields: [meeting_id], references: [id])
+  instance MeetingInstance? @relation(fields: [meeting_instance_id], references: [id])
 }
 
 // PUT LOGS TABLES HERE UNDER THIS COMMENT
