@@ -42,13 +42,15 @@ export const meetingInstanceListById = async (data: MeetingInstanceList) => {
 	        m.agenda,
 	        h.full_name AS host_name,
 	        GROUP_CONCAT( DISTINCT e.full_name ) AS attendees,
-          mi.is_active
+          mi.is_active,
+          MAX(mm.minutes) AS minutes
         FROM
 	        MeetingInstance mi
 	      LEFT JOIN Meeting m ON m.id = mi.meeting_id
 	      LEFT JOIN Employee h ON h.id = m.host_id
 	      LEFT JOIN MeetingAttendee ma ON ma.meeting_instance_id = mi.id
-	      LEFT JOIN Employee e ON e.id = ma.employee_id 
+	      LEFT JOIN Employee e ON e.id = ma.employee_id
+        LEFT JOIN MeetingMinutes mm ON mm.meeting_instance_id = mi.id
         WHERE
 	        m.id = ${data.meeting_id}
 	        AND mi.is_deleted = 0 
@@ -188,12 +190,14 @@ export const meetingList = async (data: MeetingList) => {
             m.location_details,
             m.agenda,
             h.full_name AS host_name,
-            GROUP_CONCAT(DISTINCT e.full_name) AS attendees
+            GROUP_CONCAT(DISTINCT e.full_name) AS attendees,
+            MAX(mm.minutes) AS minutes
         FROM MeetingInstance mi
             LEFT JOIN Meeting m ON m.id = mi.meeting_id
             LEFT JOIN Employee h ON h.id = m.host_id
             LEFT JOIN MeetingAttendee ma ON ma.meeting_instance_id = mi.id
             LEFT JOIN Employee e ON e.id = ma.employee_id
+            LEFT JOIN MeetingMinutes mm ON mm.meeting_instance_id = mi.id
         WHERE
             mi.is_active = 1
             AND mi.is_deleted = 0
