@@ -157,23 +157,46 @@ export const meetingMinute = async (data: MeetingMinute) => {
 
   if (!meeting) throw new Error("Meeting instance not found.");
 
-  const newMinutes = await prisma.meetingMinutes.create({
-    data: {
-      meeting_instance_id: data.meeting_instance_id,
-      minutes: data.minutes,
-      meeting_id: data.meeting_id,
-      created_by: 1,
-    },
+  const newMinutesTx = await prisma.$transaction(async (tx) => {
+    let newMinutes = null;
+
+    const minutes = await tx.meetingMinutes.findFirst({
+      where: {
+        meeting_id: data.meeting_id,
+        meeting_instance_id: data.meeting_instance_id,
+      },
+    });
+
+    if (!minutes) {
+      // create
+      newMinutes = await prisma.meetingMinutes.create({
+        data: {
+          meeting_instance_id: data.meeting_instance_id,
+          minutes: data.minutes,
+          meeting_id: data.meeting_id,
+          created_by: 1,
+        },
+      });
+    } else {
+      // update
+      newMinutes = await tx.meetingMinutes.update({
+        where: {
+          id: minutes.id,
+        },
+        data: {
+          minutes: data.minutes,
+        },
+      });
+    }
+
+    return newMinutes;
   });
 
-  return newMinutes;
+  return newMinutesTx;
 };
 
 export const meetingList = async (data: MeetingList) => {
-  let result;
-
-  if (data.employee_id && data.end_date) {
-    result = await prisma.$queryRaw`
+  const result = await prisma.$queryRaw`
         SELECT
             mi.id AS meeting_instance_id,
             mi.meeting_id,
@@ -212,40 +235,6 @@ export const meetingList = async (data: MeetingList) => {
                 )
         GROUP BY mi.id;
     `;
-  } else {
-    result = await prisma.$queryRaw`
-        SELECT
-	        mi.id AS meeting_instance_id,
-	        mi.meeting_id,
-    	    mi.instance_date,
-	        mi.start_time,
-	        mi.end_time,
-	        mi.status,
-	        m.title,
-	        m.recurrence_rule,
-	        m.recurrence_type,
-	        m.recurrence_start_date,
-	        m.recurrence_end_date,
-	        m.location_type,
-	        m.location_details,
-	        m.agenda,
-	        h.full_name,
-	        GROUP_CONCAT( e.full_name ) AS attendees 
-        FROM
-	        MeetingInstance mi
-	        LEFT JOIN Meeting m ON m.id = mi.meeting_id
-	        LEFT JOIN Employee h ON h.id = m.host_id
-	        LEFT JOIN MeetingAttendee ma ON ma.meeting_instance_id = mi.id
-	        LEFT JOIN Employee e ON e.id = ma.employee_id 
-        WHERE
-	        mi.is_active = 1 
-	        AND mi.is_deleted = 0 
-	        AND m.is_active = 1 
-	        AND m.is_deleted = 0 
-        GROUP BY
-	        mi.id
-        `;
-  }
 
   return result;
 };
