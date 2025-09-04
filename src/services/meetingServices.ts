@@ -1,6 +1,8 @@
 import { INSPECT_MAX_BYTES } from "buffer";
 import prisma from "../config/db";
 import { generateMeetingInstances } from "../utils/dateOrTimeBasedUtilities";
+import { getMeetingTemplate } from "../utils/meetingTemplate";
+import { sendEmail } from "../utils/sendEmail";
 import {
   AttendMeeting,
   Meeting,
@@ -118,10 +120,85 @@ export const createMeeting = async (data: Meeting) => {
         data: attendeesData,
       });
     }
+    const meetingDetails = (await tx.$queryRaw`
+      SELECT
+        m.id AS meeting_id,
+        m.title,
+        m.recurrence_type,
+        m.start_time,
+        m.end_time,
+        m.recurrence_rule,
+        m.location_type,
+        m.location_details,
+        m.agenda,
+        h.full_name AS host_name,
+        h.email AS host_email,
+        GROUP_CONCAT(DISTINCT e.full_name) AS attendees_names,
+        GROUP_CONCAT(DISTINCT e.email) AS attendees_emails,
+        (SELECT email FROM User u WHERE u.type = 'hr') AS hr_email
+      FROM Meeting m
+      LEFT JOIN Employee h ON h.id = m.host_id
+      LEFT JOIN MeetingAttendee ma ON ma.meeting_id = m.id
+      LEFT JOIN Employee e ON e.id = ma.employee_id
+      WHERE m.id = ${newMeeting.id}
+      GROUP BY m.id, h.full_name, h.email;
+    `) as {
+      meeting_id: number;
+      title: string;
+      recurrence_type: string;
+      recurrence_rule: string;
+      start_time: string;
+      end_time: string;
+      location_type: string;
+      location_details: string;
+      agenda?: string;
+      host_name: string;
+      host_email: string;
+      attendees_names: string;
+      attendees_emails: string;
+      hr_email: string;
+    }[];
 
+    if (meetingDetails.length === 0) {
+      throw new Error("Meeting details not found");
+    }
+
+    const meetingInfo = meetingDetails[0];
+    const attendeesEmails = meetingInfo.attendees_emails
+      ? meetingInfo.attendees_emails.split(",")
+      : [];
+    const attendeesNames = meetingInfo.attendees_names
+      ? meetingInfo.attendees_names.split(",")
+      : [];
+
+    const attendees_list_html = attendeesNames
+      .map((name, index) => `<tr><td>${safeHtml(name)}</td></tr>`)
+      .join("");
+    await sendEmail({
+      to: attendeesEmails.join(","),
+      subject: `Orio Connect - New Meeting Scheduled: ${meetingInfo.title}`,
+      cc: [meetingInfo.host_email, meetingInfo.hr_email]
+        .filter(Boolean)
+        .join(","),
+      html: getMeetingTemplate("creation", {
+        employee_name: "Team",
+        meeting_id: meetingInfo.meeting_id.toString(),
+        title: meetingInfo.title,
+        recurrence_type: meetingInfo.recurrence_type,
+        recurrence_rule: meetingInfo.recurrence_rule,
+        host_name: meetingInfo.host_name,
+        host_email: meetingInfo.host_email,
+        start_time: meetingInfo.start_time,
+        end_time: meetingInfo.end_time,
+        location_type: meetingInfo.location_type,
+        location_details: meetingInfo.location_details,
+        agenda: meetingInfo.agenda,
+        attendees_list_html,
+        year: new Date().getFullYear().toString(),
+      }),
+    });
     return newMeeting;
   });
-
   return meeting;
 };
 
@@ -168,7 +245,6 @@ export const meetingMinute = async (data: MeetingMinute) => {
     });
 
     if (!minutes) {
-      // create
       newMinutes = await prisma.meetingMinutes.create({
         data: {
           meeting_instance_id: data.meeting_instance_id,
@@ -178,7 +254,6 @@ export const meetingMinute = async (data: MeetingMinute) => {
         },
       });
     } else {
-      // update
       newMinutes = await tx.meetingMinutes.update({
         where: {
           id: minutes.id,
@@ -188,6 +263,117 @@ export const meetingMinute = async (data: MeetingMinute) => {
         },
       });
     }
+    const meetingDetails = (await tx.$queryRaw`
+      SELECT
+        m.id AS meeting_id,
+        m.title,
+        m.recurrence_type,
+        m.recurrence_rule,
+        m.start_time,
+        m.end_time,
+        m.location_type,
+        m.location_details,
+        m.agenda,
+        h.full_name AS host_name,
+        h.email AS host_email,
+        GROUP_CONCAT(DISTINCT e.full_name) AS attendees_names,
+        GROUP_CONCAT(DISTINCT e.email) AS attendees_emails,
+        GROUP_CONCAT(CONCAT(e.full_name, '||', e.email, '||', ma.attended) ORDER BY e.id SEPARATOR ',') AS attendees_status,
+        (SELECT email FROM User u WHERE u.type = 'hr') AS hr_email,
+        (SELECT full_name FROM Employee e2 WHERE e2.id = ${newMinutes.created_by}) AS created_by_name,
+        (SELECT email FROM Employee e3 WHERE e3.id = ${newMinutes.created_by}) AS created_by_email
+      FROM Meeting m
+      LEFT JOIN Employee h ON h.id = m.host_id
+      LEFT JOIN MeetingAttendee ma  ON ma.meeting_id = m.id AND ma.meeting_instance_id = ${data.meeting_instance_id}
+      LEFT JOIN Employee e ON e.id = ma.employee_id
+      WHERE m.id = ${data.meeting_id}
+      GROUP BY m.id, h.full_name, h.email;
+    `) as {
+      meeting_id: number;
+      title: string;
+      recurrence_type: string;
+      recurrence_rule: string;
+      start_time: string;
+      end_time: string;
+      location_type: string;
+      location_details: string;
+      agenda?: string;
+      host_name: string;
+      host_email: string;
+      attendees_names: string;
+      attendees_emails: string;
+      attendees_status: string;
+      hr_email: string;
+      created_by_name: string;
+      created_by_email: string;
+    }[];
+
+    if (meetingDetails.length === 0) {
+      throw new Error("Meeting details not found");
+    }
+
+    const meetingInfo = meetingDetails[0];
+    const attendeesEmails = meetingInfo.attendees_emails
+      ? meetingInfo.attendees_emails.split(",")
+      : [];
+    const attendeesNames = meetingInfo.attendees_names
+      ? meetingInfo.attendees_names.split(",")
+      : [];
+    const attendeesStatus = meetingInfo.attendees_status
+      ? meetingInfo.attendees_status.split(",")
+      : [];
+
+    const attendeesInfo = meetingInfo.attendees_status
+      ? meetingInfo.attendees_status.split(",").map((item) => {
+          const [name, email, status] = item.split("||");
+          return { name, email, status };
+        })
+      : [];
+
+    const attendees_status_html = attendeesInfo
+      .map(
+        (attendee) => `
+      <tr>
+        <td>${safeHtml(attendee.name)}</td>
+        <td class="${attendee.status === "1" ? "attended" : "not-attended"}">
+          ${attendee.status === "1" ? "Attended" : "Not Attended"}
+        </td>
+      </tr>
+    `
+      )
+      .join("");
+
+    await sendEmail({
+      to: attendeesEmails.join(","),
+      subject: `Orio Connect - Meeting Minutes Published: ${meetingInfo.title}`,
+      cc: [meetingInfo.host_email, meetingInfo.hr_email]
+        .filter(Boolean)
+        .join(","),
+      html: getMeetingTemplate("minutes-published", {
+        employee_name: "Team",
+        meeting_id: meetingInfo.meeting_id.toString(),
+        title: meetingInfo.title,
+        recurrence_type: meetingInfo.recurrence_type,
+        recurrence_rule: meetingInfo.recurrence_rule,
+        host_name: meetingInfo.host_name,
+        host_email: meetingInfo.host_email,
+        start_time: meetingInfo.start_time,
+        end_time: meetingInfo.end_time,
+        location_type: meetingInfo.location_type,
+        location_details: meetingInfo.location_details,
+        agenda: meetingInfo.agenda,
+        instance_date: meeting.instance_date,
+        created_by_name: meetingInfo.created_by_name,
+        created_by_email: meetingInfo.created_by_email,
+        created_at: newMinutes.created_at.toISOString(),
+        attendees_list_html: attendeesNames
+          .map((name) => `<tr><td>${safeHtml(name)}</td></tr>`)
+          .join(""),
+        attendees_status_html,
+        minutes: newMinutes.minutes,
+        year: new Date().getFullYear().toString(),
+      }),
+    });
 
     return newMinutes;
   });
@@ -258,3 +444,5 @@ export const toggleMeetingInstanceStatus = async (
     },
   });
 };
+const safeHtml = (content: string | undefined): string =>
+  content ? content.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";

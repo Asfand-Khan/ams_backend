@@ -11,6 +11,8 @@ import {
 } from "./notifyCheckOut";
 import { markAbsent } from "./markAbsent";
 import { markWeekend } from "./markWeekend";
+import { notifyMeetingReminders } from "./notifyMeetingReminders";
+import { notifyUpcomingMeetings } from "./notifyUpcomingMeetings";
 
 async function notifyCheckIN09AMHandler() {
   console.log("Notify checkin 09AM work started.");
@@ -59,7 +61,16 @@ async function markWeekendHandler() {
   await markWeekend();
   console.log("Mark weekend work started.");
 }
-
+async function meetingReminderHandler() {
+  console.log("notifyMeetingReminders work started.");
+  await notifyMeetingReminders();
+  console.log("notifyMeetingReminders work ended.");
+}
+async function upcomingMeetingReminderHandler() {
+  console.log("📢 Upcoming meeting reminders work started.");
+  await notifyUpcomingMeetings();
+  console.log("✅ Upcoming meeting reminders work ended.");
+}
 // async function sendEmail() {
 //   console.log("Details work started.");
 //   await sendDetails();
@@ -143,6 +154,26 @@ export default function initializeCronJobs() {
       { timezone: "Asia/Karachi" }
     );
     markWeekendSchedule.start();
+
+    //  meeting reminders
+    const meetingReminder = cron.schedule(
+      "00 18 * * *",
+      () => {
+        notifyMeetingReminders();
+      },
+      { timezone: "Asia/Karachi" }
+    );
+    meetingReminder.start();
+
+    // Hourly Upcoming Meeting Reminders
+    const upcomingMeetingReminderSchedule = cron.schedule(
+      "0 * * * *",
+      () => {
+        upcomingMeetingReminderHandler();
+      },
+      { timezone: "Asia/Karachi" }
+    );
+    upcomingMeetingReminderSchedule.start();
   } catch (err: any) {
     console.error("❌ Cron job initialization failed:", err.message);
   }
