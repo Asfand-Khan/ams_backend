@@ -16,7 +16,6 @@ import { getWorkStatus } from "../utils/getWorkStatusAndHours";
 import { sendEmail } from "../utils/sendEmail";
 import { getEmployeeByEmail, getEmployeeById } from "./employeeServices";
 import {
-  getAttendanceCorrectionApproveTemplate,
   getAttendanceCorrectionRequestTemplate,
 } from "../utils/attendanceCorrectionRequestTemplate";
 import { format } from "date-fns-tz";
@@ -40,6 +39,7 @@ export const createAttendanceCorrection = async (
 
   const employee = (await prisma.$queryRaw`
     SELECT
+      emp.full_name,
 	    emp.id,
   	  emp.email AS 'employee_email',
 	    tl.email AS 'team_lead_email',
@@ -53,6 +53,7 @@ export const createAttendanceCorrection = async (
 	  emp.id = ${data.employee_id};
   `) as {
     id: number;
+    full_name: string;
     employee_email: string;
     team_lead_email: string;
     hr_email: string;
@@ -67,6 +68,7 @@ export const createAttendanceCorrection = async (
       cc: emp.hr_email,
       bcc: emp.team_lead_email,
       html: getAttendanceCorrectionRequestTemplate({
+        full_name : emp.full_name,
         attendance_date: data.attendance_date,
         reason: data.reason,
         request_type: data.request_type,
@@ -285,10 +287,10 @@ export const attendanceCorrectionRejectApprove = async (
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
-      subject: `ORIO CONNECT - ATTENDANCE CORRECTION ${updatedCorrection.status.toUpperCase()}`,
+      subject: `ORIO CONNECT - Attendance Correction ${updatedCorrection.status.toUpperCase()}`,
       cc: emp.hr_email,
       bcc: emp.team_lead_email,
-      html: getAttendanceCorrectionApproveTemplate({
+      html: getAttendanceCorrectionRequestTemplate({
         attendance_date: updatedCorrection.attendance_date,
         reason: updatedCorrection.reason,
         request_type: updatedCorrection.request_type,
@@ -300,7 +302,7 @@ export const attendanceCorrectionRejectApprove = async (
         status: updatedCorrection.status,
         created_at: format(updatedCorrection.created_at, "yyyy-MM-dd HH:mm:ss"),
         year: new Date().getFullYear().toString(),
-        fullname: emp.full_name,
+        full_name: emp.full_name,
       }),
     });
   }
