@@ -23,13 +23,14 @@ import { comparePassword, getUserByEmployeeId } from "../services/authServices";
 import { handleAppError } from "../utils/appErrorHandler";
 import { sendEmail } from "../utils/sendEmail";
 import { getSignUpTemplate } from "../utils/signUpTemplate";
+import { AuthRequest } from "../types/types";
 
 // Module --> Employee
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/employees
 // Description --> Create employee
 export const createEmployeeHandler = async (
-  req: Request,
+  req: AuthRequest,
   res: Response
 ): Promise<any> => {
   try {

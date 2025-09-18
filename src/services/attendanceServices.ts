@@ -7,6 +7,7 @@ import {
   UpdateAttendance,
 } from "../validations/attendanceValidations";
 
+
 type WorkStatus =
   | "early_leave"
   | "half_day"

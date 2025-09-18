@@ -58,7 +58,6 @@ export const meetingInstanceListById = async (data: MeetingInstanceList) => {
 	        AND mi.is_deleted = 0 
 	        AND m.is_active = 1 
 	        AND m.is_deleted = 0 
-          AND mi.instance_date BETWEEN DATE_SUB(CURDATE(), INTERVAL 7 DAY) 
           AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)
         GROUP BY
 	        mi.id;
