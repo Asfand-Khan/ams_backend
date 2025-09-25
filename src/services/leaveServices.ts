@@ -359,7 +359,7 @@ export const leaveRejectApprove = async (
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
-      subject: `ORIO CONNECT - LEAVE REQUEST ${leave.status.toUpperCase()}`,
+      subject: `ORIO CONNECT - LEAVE REQUEST ${updatedLeave.status.toUpperCase()}`,
       cc: emp.hr_email,
       bcc: emp.team_lead_email,
       html: getLeaveTemplate({

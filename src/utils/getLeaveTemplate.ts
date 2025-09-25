@@ -157,8 +157,6 @@ export const getLeaveTemplate = ({
             <h1>Leave Request Notification</h1>
         </div>
         <div class="content status-${status}">
-            <h2>Request #${id} - ${status.toUpperCase()}</h2>
-
             <p>A leave request for Employee Name <strong>${name.toUpperCase()}</strong> has been  ${status}  <strong>${applied_on}</strong>. Please find the details below:</p>
             <table class="details-table">
                 <tr>
@@ -184,18 +182,6 @@ export const getLeaveTemplate = ({
                 <tr>
                     <th>Status</th>
                     <td>${status}</td>
-                </tr>
-                <tr>
-                    <th>Remarks</th>
-                    <td>${remarks || "None"}</td>
-                </tr>
-                <tr>
-                    <th>Reviewed By</th>
-                    <td>${approved_by_name || "Not yet reviewed"}</td>
-                </tr>
-                <tr>
-                    <th>Reviewed On</th>
-                    <td>${approved_on || "Not yet reviewed"}</td>
                 </tr>
             </table>
             <p><strong>Applied On:</strong> ${applied_on}</p>

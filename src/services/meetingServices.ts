@@ -30,7 +30,7 @@ export const meetingInstanceListById = async (data: MeetingInstanceList) => {
         SELECT
 	        mi.id AS meeting_instance_id,
 	        mi.meeting_id,
-	        mi.instance_date,
+	        DATE_FORMAT(mi.instance_date, '%d-%b-%Y') AS instance_date,
 	        mi.start_time,
 	        mi.end_time,
 	        mi.status,
@@ -58,9 +58,12 @@ export const meetingInstanceListById = async (data: MeetingInstanceList) => {
 	        AND mi.is_deleted = 0 
 	        AND m.is_active = 1 
 	        AND m.is_deleted = 0 
-          AND DATE_ADD(CURDATE(), INTERVAL 14 DAY)
+          AND (mi.instance_date <= CURDATE() 
+					OR mi.instance_date BETWEEN CURDATE() AND DATE_ADD(CURDATE(), INTERVAL 7 DAY))
         GROUP BY
-	        mi.id;
+                mi.id
+        ORDER BY 
+                mi.instance_date desc;
         `;
   return instances;
 };
