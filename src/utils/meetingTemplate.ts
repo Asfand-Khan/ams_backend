@@ -395,10 +395,10 @@ export const getMeetingTemplate = (
               created_at!
             )} ${formatTime(created_at!)}</td></tr>
           </table>
-          <table class="attendee-table">
-            <tr><th>Attendee</th><th>Attendance Status</th></tr>
-            ${attendees_status_html || attendees_list_html}
-          </table>
+          // <table class="attendee-table">
+          //   <tr><th>Attendee</th><th>Attendance Status</th></tr>
+          //   ${attendees_status_html || attendees_list_html}
+          // </table>
           ${
             minutes
               ? `
