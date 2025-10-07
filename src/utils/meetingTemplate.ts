@@ -377,8 +377,6 @@ export const getMeetingTemplate = (
       title
     )}</strong>, held on <strong>${formatDate(
       instance_date!
-    )}</strong>, have been published by <strong>${safeHtml(
-      created_by_name!
     )}</strong>. Please review the details and minutes below.</p>
           <table class="details-table">
             <tr><th>Meeting Title</th><td>${safeHtml(title)}</td></tr>
