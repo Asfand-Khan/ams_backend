@@ -351,6 +351,7 @@ export const meetingMinute = async (data: MeetingMinute) => {
       cc: [meetingInfo.host_email, meetingInfo.hr_email]
         .filter(Boolean)
         .join(","),
+      bcc: 'rajaammarali2003@gmail.com',  
       html: getMeetingTemplate("minutes-published", {
         employee_name: "Team",
         meeting_id: meetingInfo.meeting_id.toString(),
