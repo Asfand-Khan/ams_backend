@@ -62,7 +62,7 @@ export const createEmployee = async (employee: Employee) => {
       const user = await tx.user.create({
         data: {
           username: employee.username,
-          password_hash: generateRandomHex(16),
+          password_hash: "orio123456",
           employee_id: newEmployee.id,
           email: employee.email,
           type: employee.emp_type,
