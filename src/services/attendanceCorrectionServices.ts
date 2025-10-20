@@ -91,17 +91,6 @@ export const attendanceCorrectionListing = async (
   data: AttendanceCorrectionListing,
   user: any
 ) => {
-  const userRecord = await prisma.user.findFirst({
-    where: { employee_id: user.id },
-    select: { type: true },
-  });
-
-  if (!userRecord) {
-    throw new Error("User not found");
-  }
-
-  const userType = userRecord.type;
-
   // Base where clause
   let whereClause: any = {};
   if (data.status) {
@@ -117,40 +106,56 @@ export const attendanceCorrectionListing = async (
       lte: endOfDay,
     };
   }
-  if (userType === "employee") {
-    whereClause["employee_id"] = user.id;
-  } else if (userType === "lead") {
-    const teamMembers = await prisma.teamMember.findMany({
-      where: {
-        team: {
-          team_lead_id: user.id,
-        },
-        is_active: true,
-        is_deleted: false,
-      },
-      select: {
-        employee_id: true,
-      },
+  if (data.employee_id) {
+    const employeeExists = await prisma.employee.findUnique({
+      where: { id: data.employee_id },
+      select: { id: true },
     });
 
-    const employeeIds = teamMembers.map((member) => member.employee_id);
-
-    if (employeeIds.length === 0) {
-      return []; 
-    }
-    whereClause["employee_id"] = {
-      in: employeeIds,
-    };
-    if (data.employee_id && !employeeIds.includes(data.employee_id)) {
-      return []; 
-    }
-  } else if (userType === "admin" || userType === "hr") {
-    if (data.employee_id) {
+    if (employeeExists) {
       whereClause["employee_id"] = data.employee_id;
+    } else {
+      return []; 
     }
   } else {
-    return []; 
+    const userRecord = await prisma.user.findFirst({
+      where: { employee_id: user.id },
+      select: { type: true },
+    });
+
+    if (!userRecord) {
+      throw new Error("User not found");
+    }
+
+    const userType = userRecord.type;
+
+    if (userType === "lead") {
+      const teamMembers = await prisma.teamMember.findMany({
+        where: {
+          team: {
+            team_lead_id: user.id,
+          },
+          is_active: true,
+          is_deleted: false,
+        },
+        select: {
+          employee_id: true,
+        },
+      });
+
+      const employeeIds = teamMembers.map((member) => member.employee_id);
+
+      if (employeeIds.length === 0) {
+        return []; 
+      }
+
+      // Restrict to team members
+      whereClause["employee_id"] = {
+        in: employeeIds,
+      };
+    }
   }
+
   const correction = await prisma.attendanceCorrectionRequest.findMany({
     where: whereClause,
     include: {
@@ -167,7 +172,6 @@ export const attendanceCorrectionListing = async (
     },
     orderBy: { created_at: "desc" },
   });
-
   return correction.map((record) => ({
     ...record,
     id: record.id,
