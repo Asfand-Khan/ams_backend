@@ -112,18 +112,27 @@ export const getSingleAssetComplaintHandler = async (
 // Endpoint --> /api/v1/asset-complaints/
 // Description --> Update Asset Complaint
 export const updateAssetComplaintHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const parsedData = assetComplaintRequestUpdateSchema.parse(req.body);
+    // Ensure user is authenticated
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
 
-    const complaint = await assetComplaintUpdate(parsedData);
+    const parsedData = assetComplaintRequestUpdateSchema.parse(req.body); 
+    const complaint = await assetComplaintUpdate(parsedData, req.userRecord.id);
 
     return res.status(200).json({
       status: 1,
       message: "Asset complaint updated successfully",
-      payload: complaint,
+      payload: [complaint], 
     });
   } catch (error) {
     const err = handleAppError(error);

@@ -12,6 +12,6 @@ const router = Router();
 router.post("/", createAssetComplaintHandler);
 router.post("/all",authenticate, getAllAssetComplaintHandler);
 router.post("/single", getSingleAssetComplaintHandler);
-router.put("/", updateAssetComplaintHandler);
+router.put("/", authenticate, updateAssetComplaintHandler);
 
 export default router;

@@ -136,7 +136,8 @@ export const assetComplaintSingle = async (
 };
 
 export const assetComplaintUpdate = async (
-  data: AssetComplaintRequestUpdate
+  data: AssetComplaintRequestUpdate,
+   reviewed_by: number
 ) => {
   const complaint = await prisma.assetComplaintRequest.update({
     where: {
@@ -145,6 +146,9 @@ export const assetComplaintUpdate = async (
     data: {
       status: data.status,
       resolution_remarks: data.remarks,
+      reviewed_by,
+      reviewed_at: new Date(),
+      updated_at: new Date(),
     },
   });
 
