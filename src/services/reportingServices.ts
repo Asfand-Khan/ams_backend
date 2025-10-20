@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import prisma from "../config/db";
 import { OverallAttendanceSummary } from "../validations/reportingValidations";
 import { secondsToHHMMSS } from "./attendanceServices";
@@ -157,8 +158,8 @@ export const getOverallAttendanceSummaryReport = async (
   }));
 };
 
-export const getAttendanceDetail = async (data: OverallAttendanceSummary,user:any) => {
-     const userRecord = await prisma.user.findFirst({
+export const getAttendanceDetail = async (data: OverallAttendanceSummary, user: any) => {
+  const userRecord = await prisma.user.findFirst({
     where: { employee_id: user.id },
     select: { type: true },
   });
@@ -171,58 +172,63 @@ export const getAttendanceDetail = async (data: OverallAttendanceSummary,user:an
   if (userType === "employee") {
     return [];
   }
+
   let employeeIds: number[] = [];
 
   if (userType === "lead") {
     const teamMembers = await prisma.teamMember.findMany({
       where: {
-        team: {
-          team_lead_id: user.id,
-        },
+        team: { team_lead_id: user.id },
         is_active: true,
         is_deleted: false,
       },
-      select: {
-        employee_id: true,
-      },
+      select: { employee_id: true },
     });
 
     employeeIds = teamMembers.map((m) => m.employee_id);
     if (employeeIds.length === 0) return [];
   }
-  const attendance = await prisma.$queryRaw`
-        WITH RECURSIVE date_series AS (
-            SELECT DATE(${data.start_date}) AS date
-            UNION ALL
-            SELECT DATE_ADD(date, INTERVAL 1 DAY)
-            FROM date_series
-            WHERE date < DATE(${data.end_date})
-        )
-          SELECT
-              emp.id AS employee_id,
-              emp.employee_code,
-              emp.full_name,
-              CAST(DATE(d.date) AS CHAR) AS date,
-              att.check_in_time,
-              att.check_out_time,
-              att.check_in_status,
-              att.check_out_status,
-              att.day_status,
-              att.work_hours,
-              o1.name AS check_in_office,
-              o2.name AS check_out_office
-          FROM
-              date_series d
-            CROSS JOIN Employee emp
-            LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = d.date
-            LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
-            LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
-          WHERE
-              emp.status = 'active' AND emp.is_deleted = 0 AND emp.department_id != 1
-               ${employeeIds.length > 0 ? `AND emp.id IN (${employeeIds.join(",")})` : ""}
-          ORDER BY
-              emp.id ASC;
-      `;
+  const employeeFilter =
+    employeeIds.length > 0
+      ? Prisma.sql`AND emp.id IN (${Prisma.join(employeeIds)})`
+      : Prisma.sql``; // empty SQL fragment when no IDs
+
+  const query = Prisma.sql`
+    WITH RECURSIVE date_series AS (
+      SELECT DATE(${data.start_date}) AS date
+      UNION ALL
+      SELECT DATE_ADD(date, INTERVAL 1 DAY)
+      FROM date_series
+      WHERE date < DATE(${data.end_date})
+    )
+    SELECT
+        emp.id AS employee_id,
+        emp.employee_code,
+        emp.full_name,
+        CAST(DATE(d.date) AS CHAR) AS date,
+        att.check_in_time,
+        att.check_out_time,
+        att.check_in_status,
+        att.check_out_status,
+        att.day_status,
+        att.work_hours,
+        o1.name AS check_in_office,
+        o2.name AS check_out_office
+    FROM
+        date_series d
+      CROSS JOIN Employee emp
+      LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = d.date
+      LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
+      LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
+    WHERE
+        emp.status = 'active'
+        AND emp.is_deleted = 0
+        AND emp.department_id != 1
+        ${employeeFilter}
+    ORDER BY emp.id ASC
+  `;
+
+  const attendance = await prisma.$queryRaw(query);
 
   return attendance;
 };
