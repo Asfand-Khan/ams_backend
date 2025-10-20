@@ -129,21 +129,33 @@ export const getSingleAttendanceCorrectionHandler = async (
 // Endpoint --> /api/v1/attendance-correction/approve-reject
 // Description --> Approve Attendance Correction
 export const approveRejectAttendanceCorrectionHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const parsedData = approveRejectAttendanceCorrectionSchema.parse(req.body);
+    // Ensure user is authenticated
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
 
-    const updtaedCorrection = await attendanceCorrectionRejectApprove(parsedData, null);
+    const parsedData = approveRejectAttendanceCorrectionSchema.parse(req.body);
+    const updatedCorrection = await attendanceCorrectionRejectApprove(
+      parsedData,
+      req.userRecord.id
+    );
 
     return res.status(200).json({
       status: 1,
       message: "Updated attendance correction successfully",
-      payload: [updtaedCorrection],
+      payload: [updatedCorrection],
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); // Assuming handleAppError is defined
     return res.status(err.status).json({
       status: 0,
       message: err.message,

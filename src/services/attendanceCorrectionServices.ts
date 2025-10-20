@@ -205,7 +205,7 @@ export const attendanceCorrectionSingle = async (
 
 export const attendanceCorrectionRejectApprove = async (
   data: ApproveRejectAttendanceCorrection,
-  reviewed_by: number | null
+  reviewed_by: number
 ) => {
   const result = await prisma.$transaction(async (tx) => {
     const correction = await tx.attendanceCorrectionRequest.findUnique({
@@ -241,7 +241,7 @@ export const attendanceCorrectionRejectApprove = async (
         status: data.status,
         remarks: data.remarks,
         reviewed_on: new Date(),
-        reviewed_by: reviewed_by ?? null,
+        reviewed_by: reviewed_by ,
       },
     });
   } else {
@@ -305,7 +305,7 @@ export const attendanceCorrectionRejectApprove = async (
         status: data.status,
         remarks: data.remarks,
         reviewed_on: new Date(),
-        reviewed_by: reviewed_by ?? null,
+        reviewed_by: reviewed_by,
       },
     });
   }

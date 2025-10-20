@@ -12,6 +12,6 @@ const router = Router();
 router.post("/", createAttendanceCorrectionHandler);
 router.post("/all", authenticate,getAllAttendanceCorrectionHandler);
 router.post("/single", getSingleAttendanceCorrectionHandler);
-router.post("/approve-reject", approveRejectAttendanceCorrectionHandler);
+router.post("/approve-reject", authenticate , approveRejectAttendanceCorrectionHandler);
 
 export default router;
