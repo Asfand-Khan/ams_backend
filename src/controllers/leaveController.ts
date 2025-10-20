@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import {
   approveRejectLeaveSchema,
   leaveListingSchema,
@@ -15,6 +15,7 @@ import {
   singleLeave,
 } from "../services/leaveServices";
 import { handleAppError } from "../utils/appErrorHandler";
+import { AuthRequest } from "../types/types";
 
 // Module --> Leave
 // Method --> POST (Protected)
@@ -51,14 +52,20 @@ export const createLeaveHandler = async (
 // Endpoint --> /api/v1/leaves/all
 // Description --> Get Leaves
 export const getAllLeavesHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
     const parsedData = leaveListingSchema.parse(req.body);
-
-    const leaves = await allLeaves(parsedData);
-
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+    const leaves = await allLeaves(parsedData, req.userRecord);
     return res.status(200).json({
       status: 1,
       message: "All Leaves fetched successfully",
