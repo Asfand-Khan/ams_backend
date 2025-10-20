@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import {
   createTeam,
   getAllTeams,
@@ -12,17 +12,28 @@ import {
   teamSchema,
   teamUpdateSchema,
 } from "../validations/teamValidations";
+import { AuthRequest } from "../types/types";
 
 // Module --> Team
 // Method --> GET (Protected)
 // Endpoint --> /api/v1/teams
 // Description --> Fetch all teams
 export const getAllTeamsHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const teams = await getAllTeams();
+    // Ensure user is attached by authentication middleware
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+
+    const teams = await getAllTeams(req.userRecord);
 
     return res.status(200).json({
       status: 1,
@@ -30,7 +41,7 @@ export const getAllTeamsHandler = async (
       payload: teams,
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); // Assuming handleAppError is defined elsewhere
     return res.status(err.status).json({
       status: 0,
       message: err.message,

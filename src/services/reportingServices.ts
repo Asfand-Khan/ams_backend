@@ -3,8 +3,43 @@ import { OverallAttendanceSummary } from "../validations/reportingValidations";
 import { secondsToHHMMSS } from "./attendanceServices";
 
 export const getOverallAttendanceSummaryReport = async (
-  data: OverallAttendanceSummary
+  data: OverallAttendanceSummary,
+   user: any
 ) => {
+
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
+
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+
+  const userType = userRecord.type;
+  if (userType === "employee") {
+    return [];
+  }
+  let employeeIds: number[] = [];
+
+  if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+
+    employeeIds = teamMembers.map((m) => m.employee_id);
+    if (employeeIds.length === 0) return [];
+  }
+
   const query = `
         WITH RECURSIVE DateRange AS (
             SELECT DATE('${data.start_date}') AS date
@@ -27,6 +62,7 @@ export const getOverallAttendanceSummaryReport = async (
             CROSS JOIN DateRange dr
             WHERE e.status = 'active' AND e.is_deleted = 0 AND e.department_id != 1
              AND dr.date >= e.join_date
+              ${employeeIds.length > 0 ? `AND e.id IN (${employeeIds.join(",")})` : ""}
         )
         SELECT 
             ed.employee_id,
