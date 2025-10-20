@@ -170,9 +170,9 @@ export const attendanceCorrectionListing = async (
 
   return correction.map((record) => ({
     ...record,
-    id: String(record.id),
-    employee_id: String(record.employee_id),
-    reviewed_by: record.reviewed_by ? String(record.reviewed_by) : null,
+    id: record.id,
+    employee_id: record.employee_id,
+    reviewed_by: record.reviewed_by ? record.reviewed_by : null,
   }));
 };
 export const attendanceCorrectionSingle = async (
