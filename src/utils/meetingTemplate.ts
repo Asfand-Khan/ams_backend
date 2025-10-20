@@ -385,10 +385,6 @@ export const getMeetingTemplate = (
             <tr><th>Location</th><td>${capitalize(location_type)}: ${safeHtml(
       location_details
     )}</td></tr>
-            <tr><th>Host</th><td>${safeHtml(host_name)}</td></tr>
-            <tr><th>Minutes Published By</th><td>${safeHtml(
-              created_by_name!
-            )}</td></tr>
             <tr><th>Published On</th><td>${formatDate(
               created_at!
             )} ${formatTime(created_at!)}</td></tr>
