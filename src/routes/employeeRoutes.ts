@@ -16,6 +16,6 @@ router.post("/", authenticate, createEmployeeHandler);
 router.post("/change-password", changeEmployeePasswordHandler);
 router.post("/profile", getEmployeeProfileHandler);
 router.put("/update-profile", updateEmployeeProfileHandler);
-router.get("/users", getAllUsersHandler);
+router.get("/users",authenticate, getAllUsersHandler);
 
 export default router;
