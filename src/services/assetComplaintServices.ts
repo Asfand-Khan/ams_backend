@@ -96,6 +96,11 @@ export const assetComplaintListing = async (
           full_name: true,
         },
       },
+      reviewed_by_employee: {
+        select: {
+          full_name: true,
+        },
+      },
     },
     orderBy: {
       created_at: "desc",
@@ -120,6 +125,9 @@ export const assetComplaintListing = async (
     created_at: complaint.created_at.toISOString(),
     updated_at: complaint.updated_at.toISOString(),
     requested_by_employee: complaint.requested_by_employee,
+    reviewed_by_employee: complaint.reviewed_by_employee
+      ? { full_name: complaint.reviewed_by_employee.full_name }
+      : null
   }));
 };
 
