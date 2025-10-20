@@ -376,27 +376,131 @@ export const updateEmployeeProfile = async (data: EmployeeUpdateProfile) => {
   return updatedEmployee;
 };
 
-export const getAllUsersWithEmployee = async () => {
-  const allEmployees = await prisma.user.findMany({
-    where: {
-      is_deleted: false,
-    },
+export const getAllUsersWithEmployee = async (user: any) => {
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
+
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+
+  const userType = userRecord.type;
+
+  // For employee users, return empty array
+  if (userType === "employee") {
+    return [];
+  }
+
+  let whereClause: any = {
+    is_deleted: false,
+  };
+
+  // For lead users, filter users linked to their team members
+  if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+
+    const employeeIds = teamMembers.map((member) => member.employee_id);
+    if (employeeIds.length === 0) {
+      return [];
+    }
+
+    whereClause.employee_id = {
+      in: employeeIds,
+    };
+  }
+  const allUsers = await prisma.user.findMany({
+    where: whereClause,
     include: {
       employee: {
-        include: {
+        select: {
+          id: true,
+          employee_code: true,
+          full_name: true,
+          father_name: true,
+          email: true,
+          phone: true,
+          cnic: true,
+          gender: true,
+          dob: true,
+          join_date: true,
+          leave_date: true,
+          department_id: true,
+          designation_id: true,
+          profile_picture: true,
+          address: true,
+          status: true,
+          is_active: true,
+          is_deleted: true,
+          created_at: true,
+          updated_at: true,
           department: {
             select: {
               name: true,
-            }
+            },
           },
           designation: {
             select: {
               title: true,
-            }
+            },
           },
         },
       },
     },
   });
-  return allEmployees;
+
+  return allUsers.map((user) => ({
+    id: Number(user.id),
+    username: user.username,
+    email: user.email,
+    password_hash: user.password_hash,
+    type: user.type,
+    employee_id: user.employee_id ? Number(user.employee_id) : null,
+    last_login: user.last_login ? user.last_login.toISOString() : null,
+    password_reset_token: user.password_reset_token,
+    otp_token: user.otp_token,
+    token_expiry: user.token_expiry ? user.token_expiry.toISOString() : null,
+    is_active: user.is_active,
+    is_deleted: user.is_deleted,
+    created_at: user.created_at.toISOString(),
+    updated_at: user.updated_at.toISOString(),
+    employee: user.employee
+      ? {
+          id: Number(user.employee.id),
+          employee_code: user.employee.employee_code,
+          full_name: user.employee.full_name,
+          father_name: user.employee.father_name,
+          email: user.employee.email,
+          phone: user.employee.phone,
+          cnic: user.employee.cnic,
+          gender: user.employee.gender,
+          dob: user.employee.dob ? user.employee.dob.toISOString() : null,
+          join_date: user.employee.join_date ? user.employee.join_date.toISOString() : null,
+          leave_date: user.employee.leave_date ? user.employee.leave_date.toISOString() : null,
+          department_id: Number(user.employee.department_id),
+          designation_id: Number(user.employee.designation_id),
+          profile_picture: user.employee.profile_picture,
+          address: user.employee.address,
+          status: user.employee.status,
+          is_active: user.employee.is_active,
+          is_deleted: user.employee.is_deleted,
+          created_at: user.employee.created_at.toISOString(),
+          updated_at: user.employee.updated_at.toISOString(),
+          department: user.employee.department,
+          designation: user.employee.designation,
+        }
+      : null,
+  }));
 };

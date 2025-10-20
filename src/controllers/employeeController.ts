@@ -273,16 +273,29 @@ export const getAllEmployeesHandler = async (
   }
 };
 
-export const getAllUsersHandler = async (req: Request, res: Response) => {
+export const getAllUsersHandler = async (
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const employees = await getAllUsersWithEmployee();
+    // Ensure user is attached by authentication middleware
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+
+    const employees = await getAllUsersWithEmployee(req.userRecord);
     return res.status(200).json({
       status: 1,
       message: "All users fetched successfully",
       payload: employees,
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); 
     return res.status(err.status).json({
       status: 0,
       message: err.message,
