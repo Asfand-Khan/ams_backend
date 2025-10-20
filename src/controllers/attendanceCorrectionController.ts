@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import {
   approveRejectAttendanceCorrectionSchema,
   attendanceCorrectionCreateSchema,
@@ -13,6 +13,7 @@ import {
   createAttendanceCorrection,
 } from "../services/attendanceCorrectionServices";
 import { handleAppError } from "../utils/appErrorHandler";
+import { AuthRequest } from "../types/types";
 
 // Module --> Attendance Correction
 // Method --> POST (Protected)
@@ -61,13 +62,24 @@ export const createAttendanceCorrectionHandler = async (
 // Endpoint --> /api/v1/attendance-correction/all
 // Description --> Get All Attendance Correction
 export const getAllAttendanceCorrectionHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
+    // Validate request body
     const parsedData = attendanceCorrectionListingSchema.parse(req.body);
 
-    const correctionListing = await attendanceCorrectionListing(parsedData);
+    // Ensure user is attached by authentication middleware
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+
+    const correctionListing = await attendanceCorrectionListing(parsedData, req.userRecord);
 
     return res.status(200).json({
       status: 1,
@@ -75,12 +87,12 @@ export const getAllAttendanceCorrectionHandler = async (
       payload: correctionListing,
     });
   } catch (error) {
-      const err = handleAppError(error);
-      return res.status(err.status).json({
-        status: 0,
-        message: err.message,
-        payload: [],
-      });
+    const err = handleAppError(error); // Assuming handleAppError is defined elsewhere
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
   }
 };
 

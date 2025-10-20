@@ -88,15 +88,24 @@ export const createAttendanceCorrection = async (
 };
 
 export const attendanceCorrectionListing = async (
-  data: AttendanceCorrectionListing
+  data: AttendanceCorrectionListing,
+  user: any
 ) => {
-  let whereClause = {} as any;
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
 
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+
+  const userType = userRecord.type;
+
+  // Base where clause
+  let whereClause: any = {};
   if (data.status) {
     whereClause["status"] = data.status;
-  }
-  if (data.employee_id) {
-    whereClause["employee_id"] = data.employee_id;
   }
   if (data.date) {
     const inputDate = new Date(data.date);
@@ -108,7 +117,40 @@ export const attendanceCorrectionListing = async (
       lte: endOfDay,
     };
   }
+  if (userType === "employee") {
+    whereClause["employee_id"] = user.id;
+  } else if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
 
+    const employeeIds = teamMembers.map((member) => member.employee_id);
+
+    if (employeeIds.length === 0) {
+      return []; 
+    }
+    whereClause["employee_id"] = {
+      in: employeeIds,
+    };
+    if (data.employee_id && !employeeIds.includes(data.employee_id)) {
+      return []; 
+    }
+  } else if (userType === "admin" || userType === "hr") {
+    if (data.employee_id) {
+      whereClause["employee_id"] = data.employee_id;
+    }
+  } else {
+    return []; 
+  }
   const correction = await prisma.attendanceCorrectionRequest.findMany({
     where: whereClause,
     include: {
@@ -126,9 +168,13 @@ export const attendanceCorrectionListing = async (
     orderBy: { created_at: "desc" },
   });
 
-  return correction;
+  return correction.map((record) => ({
+    ...record,
+    id: String(record.id),
+    employee_id: String(record.employee_id),
+    reviewed_by: record.reviewed_by ? String(record.reviewed_by) : null,
+  }));
 };
-
 export const attendanceCorrectionSingle = async (
   data: SingleAttendanceCorrection
 ) => {
