@@ -142,21 +142,30 @@ export const leaveSummaryHandler = async (
 // Endpoint --> /api/v1/leave/approve-reject
 // Description --> Approve/Reject Leave
 export const approveRejectLeaveHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const parsedData = approveRejectLeaveSchema.parse(req.body);
+    // Ensure user is authenticated
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
 
-    const updtaedLeave = await leaveRejectApprove(parsedData, null);
+    const parsedData = approveRejectLeaveSchema.parse(req.body); 
+    const updatedLeave = await leaveRejectApprove(parsedData, req.userRecord.id);
 
     return res.status(200).json({
       status: 1,
       message: "Updated leave successfully",
-      payload: [updtaedLeave],
+      payload: [updatedLeave],
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); 
     return res.status(err.status).json({
       status: 0,
       message: err.message,

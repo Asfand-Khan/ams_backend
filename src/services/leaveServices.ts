@@ -261,7 +261,7 @@ export const leaveSummary = async (employee_id: number) => {
 
 export const leaveRejectApprove = async (
   data: ApproveRejectLeave,
-  approved_by: number | null
+  approved_by: number
 ) => {
   const leave = await prisma.leave.findUnique({
     where: {
@@ -283,7 +283,7 @@ export const leaveRejectApprove = async (
         status: "rejected",
         remarks: data.remarks,
         approved_on: new Date(),
-        approved_by: approved_by ?? null,
+        approved_by: approved_by ,
       },
       include: {
         approver: {
@@ -346,7 +346,7 @@ export const leaveRejectApprove = async (
             status: "approved",
             remarks: data.remarks,
             approved_on: new Date(),
-            approved_by: approved_by ?? null,
+            approved_by: approved_by ,
           },
           include: {
             leave_type: {
