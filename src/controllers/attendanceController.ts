@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import {
   attendanceByDateSchema,
   attendanceByIdSchema,
@@ -30,6 +30,7 @@ import {
 import { getCheckInStatus } from "../utils/getCheckInStatus";
 import { getWorkStatus } from "../utils/getWorkStatusAndHours";
 import { handleAppError } from "../utils/appErrorHandler";
+import { AuthRequest } from "../types/types";
 
 // Module --> Attendance
 // Method --> GET (Protected)
@@ -88,7 +89,6 @@ export const checkInHandler = async (
     });
   }
 };
-
 // Module --> Attendance
 // Method --> GET (Protected)
 // Endpoint --> /api/v1/attendances/check-out
@@ -146,7 +146,6 @@ export const checkOutHandler = async (
     });
   }
 };
-
 // Module --> Attendance
 // Method --> GET (Protected)
 // Endpoint --> /api/v1/attendances/single-attendance
@@ -250,7 +249,6 @@ export const getAttendanceHandler = async (
     });
   }
 };
-
 // Module --> Attendance
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/attendances/add
@@ -335,7 +333,6 @@ export const addAttendanceHandler = async (
     });
   }
 };
-
 // Module --> Attendance
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/attendances/update
@@ -410,18 +407,26 @@ export const updateAttendanceHandler = async (
     });
   }
 };
-
 // Module --> Attendance
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/attendances/by-date
 // Description --> Fetch the attendance by the date
 export const getAttendanceByDateHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
+    // Validate request body
     const parsedData = attendanceByDateSchema.parse(req.body);
-    const attendance = await getAttendanceByDate(parsedData);
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+    const attendance = await getAttendanceByDate(parsedData, req.userRecord);
 
     return res.status(200).json({
       status: 1,
@@ -437,7 +442,6 @@ export const getAttendanceByDateHandler = async (
     });
   }
 };
-
 // Module --> Attendance
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/attendances/by-id
@@ -478,11 +482,21 @@ export const getAttendanceByIdHandler = async (
 // Endpoint --> /api/v1/attendances/daily-attendance-summary
 // Description --> Get daily attendance summary
 export const getDailyAttendanceSummaryHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest, // Updated to use AuthRequest
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const summary = await dailyAttendanceSummary();
+    // Ensure user is attached by authentication middleware
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+
+    const summary = await dailyAttendanceSummary(req.userRecord);
 
     return res.status(200).json({
       status: 1,
@@ -490,7 +504,7 @@ export const getDailyAttendanceSummaryHandler = async (
       payload: summary,
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); // Assuming handleAppError is defined elsewhere
     return res.status(err.status).json({
       status: 0,
       message: err.message,

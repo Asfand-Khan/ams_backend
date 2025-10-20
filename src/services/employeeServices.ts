@@ -10,13 +10,72 @@ import {
   EmployeeUpdateProfile,
 } from "../validations/employeeValidations";
 
-export const getAllEmployees = async () => {
+export const getAllEmployees = async (user: any) => {
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
+
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+  const userType = userRecord.type;
+  if (userType === "employee") {
+    return [];
+  }
+  let whereClause: any = {
+    is_deleted: false,
+  };
+  if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+    const employeeIds = teamMembers.map((member) => member.employee_id);
+    if (employeeIds.length === 0) {
+      return [];
+    }
+    whereClause.id = {
+      in: employeeIds,
+    };
+  }
   const allEmployees = await prisma.employee.findMany({
-    where: {
-      is_deleted: false,
+    where: whereClause,
+    select: {
+      id: true,
+      employee_code: true,
+      full_name: true,
+      father_name: true,
+      email: true,
+      phone: true,
+      cnic: true,
+      gender: true,
+      dob: true,
+      join_date: true,
+      leave_date: true,
+      department_id: true,
+      designation_id: true,
+      profile_picture: true,
+      address: true,
+      status: true,
+      is_active: true,
+      is_deleted: true,
+      created_at: true,
+      updated_at: true,
     },
   });
-  return allEmployees;
+  return allEmployees.map((employee) => ({
+    ...employee,
+    id: String(employee.id), 
+  }));
 };
 
 export const createEmployee = async (employee: Employee) => {

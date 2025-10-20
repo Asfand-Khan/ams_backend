@@ -276,38 +276,84 @@ export const updateAttendance = async (
   return attendance;
 };
 
-export const getAttendanceByDate = async (data: AttendanceByDate) => {
-  const attendanceByDate = await prisma.$queryRaw`
-        SELECT
-          att.id,
-	        emp.id AS employee_id,
-	        emp.employee_code,
-	        emp.full_name,
-	        ${data.attendance_date} AS date,
-	        att.check_in_time,
-	        att.check_out_time,
-	        att.check_in_status,
-	        att.check_out_status,
-          att.day_status,
-	        att.work_hours,
-	        o1.NAME AS check_in_office,
-	        o2.NAME AS check_out_office 
-        FROM
-	        Employee emp
-	      LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = ${data.attendance_date}
-	      LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
-	      LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id 
-        WHERE
-	        emp.status = 'active'
-					AND emp.department_id != 1
-        ORDER BY COALESCE(att.check_in_time, '9999-12-31 23:59:58') ASC
-      `;
+export const getAttendanceByDate = async (data: AttendanceByDate, user: any) => {
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
 
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+
+ const userType = userRecord.type;
+  if (userType === "employee") {
+    return [];
+  }
+  let query = `
+    SELECT
+      att.id,
+      emp.id AS employee_id,
+      emp.employee_code,
+      emp.full_name,
+      ? AS date,
+      att.check_in_time,
+      att.check_out_time,
+      att.check_in_status,
+      att.check_out_status,
+      att.day_status,
+      att.work_hours,
+      o1.NAME AS check_in_office,
+      o2.NAME AS check_out_office 
+    FROM
+      Employee emp
+    LEFT JOIN Attendance att ON emp.id = att.employee_id AND att.date = ?
+    LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
+    LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id 
+  `;
+  let whereClause = "WHERE emp.status = 'active' AND emp.department_id != 1";
+   let params: any[] = [data.attendance_date, data.attendance_date];
+  if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+    const employeeIds = teamMembers.map((member) => member.employee_id);
+    if (employeeIds.length === 0) {
+      return []; 
+    }
+    whereClause += ` AND emp.id IN (${employeeIds.map(() => "?").join(", ")})`;
+    params.push(...employeeIds);
+  }
+  query += `${whereClause} ORDER BY COALESCE(att.check_in_time, '9999-12-31 23:59:58') ASC`;
+  const attendanceByDate = await prisma.$queryRawUnsafe(query, ...params);
   return attendanceByDate;
 };
 
-export const dailyAttendanceSummary = async () => {
-  const result: any = await prisma.$queryRaw`
+
+export const dailyAttendanceSummary = async (user: any) => {
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
+
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+
+  const userType = userRecord.type;
+  if (userType === "employee") {
+    return [];
+  }
+  let query = `
     SELECT
       COUNT(DISTINCT e.id) AS total_employees,
       SUM(CASE WHEN a.day_status = 'present' THEN 1 ELSE 0 END) AS present,
@@ -322,13 +368,36 @@ export const dailyAttendanceSummary = async () => {
       SUM(CASE WHEN a.check_out_status = 'overtime' THEN 1 ELSE 0 END) AS overtimes,
       SUM(CASE WHEN a.check_out_status = 'manual' THEN 1 ELSE 0 END) AS manual_check_out
     FROM Employee e
-    LEFT JOIN Attendance a
-      ON e.id = a.employee_id AND a.date = CURDATE()
-    WHERE e.status = 'active' AND e.is_deleted = 0 AND e.department_id != 1;
+    LEFT JOIN Attendance a ON e.id = a.employee_id AND a.date = CURDATE()
   `;
+  let whereClause = "WHERE e.status = 'active' AND e.is_deleted = 0 AND e.department_id != 1";
+  let params: any[] = [];
 
+  if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+
+    const employeeIds = teamMembers.map((member) => member.employee_id);
+
+    if (employeeIds.length === 0) {
+      return [{}]; 
+    }
+    whereClause += ` AND e.id IN (${employeeIds.map(() => "?").join(", ")})`;
+    params.push(...employeeIds);
+  }
+  query += `${whereClause}`;
+  const result: any = await prisma.$queryRawUnsafe(query, ...params);
   const summary = result[0];
-
   const formatted = Object.fromEntries(
     Object.entries(summary).map(([key, value]) => [
       key,

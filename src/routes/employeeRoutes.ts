@@ -11,7 +11,7 @@ import { authenticate } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-router.get("/", getAllEmployeesHandler);
+router.get("/", authenticate,getAllEmployeesHandler);
 router.post("/", authenticate, createEmployeeHandler);
 router.post("/change-password", changeEmployeePasswordHandler);
 router.post("/profile", getEmployeeProfileHandler);
