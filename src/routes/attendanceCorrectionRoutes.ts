@@ -5,12 +5,11 @@ import {
   getAllAttendanceCorrectionHandler,
   getSingleAttendanceCorrectionHandler,
 } from "../controllers/attendanceCorrectionController";
-import { authenticate } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post("/", createAttendanceCorrectionHandler);
-router.post("/all", authenticate,getAllAttendanceCorrectionHandler);
+router.post("/all", getAllAttendanceCorrectionHandler);
 router.post("/single", getSingleAttendanceCorrectionHandler);
 router.post("/approve-reject", approveRejectAttendanceCorrectionHandler);
 

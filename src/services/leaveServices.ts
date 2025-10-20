@@ -116,29 +116,39 @@ export const createLeave = async (data: Leave, days: number) => {
 export const allLeaves = async (data: LeaveListing, user: any) => {
   const whereConditions: string[] = [];
   const parameters: any[] = [];
+
+  // Base conditions (always applied)
   whereConditions.push("l.is_active = ?");
   whereConditions.push("l.is_deleted = ?");
   parameters.push(1, 0);
+
+  // Optional filters
   if (data.status) {
     whereConditions.push(`l.status = ?`);
     parameters.push(data.status);
   }
+
   if (data.date) {
+    // Check if provided date is between start_date and end_date
     whereConditions.push(`? BETWEEN l.start_date AND l.end_date`);
     parameters.push(data.date);
   }
+
+  // If employee_id is provided, check if it exists in Employee table
   if (data.employee_id) {
     const employeeExists = await prisma.employee.findUnique({
       where: { id: data.employee_id },
       select: { id: true },
     });
+
     if (employeeExists) {
       whereConditions.push(`l.employee_id = ?`);
       parameters.push(data.employee_id);
     } else {
-      return []; 
+      return []; // Return empty array if employee_id does not exist
     }
   } else {
+    // If no employee_id, check user type and apply team filtering for lead
     const userRecord = await prisma.user.findFirst({
       where: { employee_id: user.id },
       select: { type: true },
@@ -151,6 +161,7 @@ export const allLeaves = async (data: LeaveListing, user: any) => {
     const userType = userRecord.type;
 
     if (userType === "lead") {
+      // Fetch team members for the lead
       const teamMembers = await prisma.teamMember.findMany({
         where: {
           team: {
@@ -163,30 +174,34 @@ export const allLeaves = async (data: LeaveListing, user: any) => {
           employee_id: true,
         },
       });
+
       const employeeIds = teamMembers.map((member) => member.employee_id);
+
       if (employeeIds.length === 0) {
-        return []; 
+        return []; // Return empty array if lead has no team members
       }
       whereConditions.push(`l.employee_id IN (${employeeIds.map(() => "?").join(", ")})`);
       parameters.push(...employeeIds);
     }
   }
+
   const whereClause =
     whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
+
   const query = `
     SELECT
-      CAST(l.id AS CHAR) AS leave_id,
-      CAST(l.employee_id AS CHAR) AS employee_id,
+      l.id AS leave_id,
+      l.employee_id,
       emp.full_name,
-      CAST(l.leave_type_id AS CHAR) AS leave_type_id,
+      l.leave_type_id,
       lt.NAME AS leave_type_name,
       l.start_date,
       l.end_date,
       l.total_days,
       l.reason,
-      l.status,
+      l.status AS STATUS,
       l.applied_on,
-      CAST(l.approved_by AS CHAR) AS approved_by,
+      l.approved_by,
       approver.full_name AS approver,
       l.approved_on,
       l.remarks,
@@ -203,9 +218,16 @@ export const allLeaves = async (data: LeaveListing, user: any) => {
   `;
 
   const leaves = await prisma.$queryRawUnsafe(query, ...parameters);
-  return leaves;
+  return (leaves as any[]).map((record) => ({
+    ...record,
+    leave_id: Number(record.leave_id),
+    employee_id: Number(record.employee_id),
+    leave_type_id: Number(record.leave_type_id),
+    approved_by: record.approved_by ? Number(record.approved_by) : null,
+    is_active: record.is_active ? 1 : 0,
+    is_deleted: record.is_deleted ? 1 : 0,
+  }));
 };
-
 export const singleLeave = async (data: SingleLeave) => {
   const leave = await prisma.leave.findUnique({
     where: {
