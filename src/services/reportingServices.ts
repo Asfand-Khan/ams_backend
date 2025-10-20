@@ -157,7 +157,39 @@ export const getOverallAttendanceSummaryReport = async (
   }));
 };
 
-export const getAttendanceDetail = async (data: OverallAttendanceSummary) => {
+export const getAttendanceDetail = async (data: OverallAttendanceSummary,user:any) => {
+     const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
+
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+
+  const userType = userRecord.type;
+  if (userType === "employee") {
+    return [];
+  }
+  let employeeIds: number[] = [];
+
+  if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+
+    employeeIds = teamMembers.map((m) => m.employee_id);
+    if (employeeIds.length === 0) return [];
+  }
   const attendance = await prisma.$queryRaw`
         WITH RECURSIVE date_series AS (
             SELECT DATE(${data.start_date}) AS date
@@ -187,6 +219,7 @@ export const getAttendanceDetail = async (data: OverallAttendanceSummary) => {
             LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
           WHERE
               emp.status = 'active' AND emp.is_deleted = 0 AND emp.department_id != 1
+               ${employeeIds.length > 0 ? `AND e.id IN (${employeeIds.join(",")})` : ""}
           ORDER BY
               emp.id ASC;
       `;

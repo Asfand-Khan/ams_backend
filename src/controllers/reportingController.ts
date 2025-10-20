@@ -51,19 +51,29 @@ export const overallAttendanceSummaryHandler = async (
 // Endpoint --> /api/v1/reporting/attendance-detail
 // Description --> Fetch attendance detail
 export const attendanceDetailHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const parsedData = overallAttendanceSummarySchema.parse(req.body);
-    const summary = await getAttendanceDetail(parsedData);
+    // Ensure user is authenticated
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+
+    const parsedData = overallAttendanceSummarySchema.parse(req.body); // Assuming schema is defined
+    const summary = await getAttendanceDetail(parsedData, req.userRecord);
     return res.status(200).json({
       status: 1,
       message: "Attendance detail fetched successfully",
       payload: summary,
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); // Assuming handleAppError is defined
     return res.status(err.status).json({
       status: 0,
       message: err.message,
