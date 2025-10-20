@@ -225,7 +225,9 @@ export const getAttendanceDetail = async (data: OverallAttendanceSummary, user: 
         AND emp.is_deleted = 0
         AND emp.department_id != 1
         ${employeeFilter}
-    ORDER BY emp.id ASC
+     ORDER BY
+        emp.id ASC,
+        d.date ASC
   `;
 
   const attendance = await prisma.$queryRaw(query);
