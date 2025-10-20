@@ -17,6 +17,7 @@ export const getOverallAttendanceSummaryReport = async (
             SELECT 
                 e.id AS employee_id,
                 e.full_name,
+                e.department_id,
                 d.name AS department_name,
                 des.title AS designation_title,
                 dr.date
@@ -25,6 +26,7 @@ export const getOverallAttendanceSummaryReport = async (
             JOIN Designation des ON e.designation_id = des.id
             CROSS JOIN DateRange dr
             WHERE e.status = 'active' AND e.is_deleted = 0 AND e.department_id != 1
+             AND dr.date >= e.join_date
         )
         SELECT 
             ed.employee_id,
@@ -32,11 +34,28 @@ export const getOverallAttendanceSummaryReport = async (
             ed.department_name,
             ed.designation_title,
             CAST(COUNT(*) AS CHAR) AS total_days,
-            SUM(CASE WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL THEN 1 ELSE 0 END) AS working_days,
+            SUM(
+            CASE 
+                WHEN 
+                (
+                    (ed.department_id IN (4,5) AND DAYOFWEEK(ed.date) != 1)
+                    OR (ed.department_id NOT IN (4,5) AND DAYOFWEEK(ed.date) NOT IN (1,7))
+                )
+                AND h.holiday_date IS NULL
+                THEN 1 ELSE 0 
+            END
+            ) AS working_days,
             SUM(CASE WHEN a.day_status IN ('present','work_from_home') THEN 1 ELSE 0 END) AS present_days,
             SUM(CASE WHEN COALESCE(a.day_status, 'absent') = 'absent' THEN 1 ELSE 0 END) AS absent_days,
             SUM(CASE WHEN a.day_status = 'leave' THEN 1 ELSE 0 END) AS leave_days,
-            SUM(CASE WHEN DAYOFWEEK(ed.date) IN (1, 7) THEN 1 ELSE 0 END) AS weekend_days,
+            SUM(
+            CASE 
+                WHEN 
+                (ed.department_id IN (4,5) AND DAYOFWEEK(ed.date) = 1)
+                OR (ed.department_id NOT IN (4,5) AND DAYOFWEEK(ed.date) IN (1,7))
+                THEN 1 ELSE 0 
+            END
+            ) AS weekend_days,
             SUM(CASE WHEN a.day_status IN ('present', 'work_from_home') AND DAYOFWEEK(ed.date) IN (1, 7) THEN 1 ELSE 0 END) AS weekend_attendance_days,
             SUM(CASE WHEN a.day_status = 'holiday' OR h.holiday_date IS NOT NULL THEN 1 ELSE 0 END) AS holiday_days,
             SUM(CASE WHEN a.day_status = 'work_from_home' THEN 1 ELSE 0 END) AS work_from_home_days,
@@ -59,8 +78,14 @@ export const getOverallAttendanceSummaryReport = async (
             ), 0) AS actual_work_seconds,
             SUM(
                 CASE 
-                    WHEN DAYOFWEEK(ed.date) NOT IN (1, 7) AND h.holiday_date IS NULL AND a.day_status != 'leave'
-                    THEN 8 
+                    WHEN 
+                    (
+                        (ed.department_id IN (4,5) AND DAYOFWEEK(ed.date) != 1)
+                        OR (ed.department_id NOT IN (4,5) AND DAYOFWEEK(ed.date) NOT IN (1,7))
+                    )
+                    AND h.holiday_date IS NULL 
+                    AND a.day_status != 'leave'
+                    THEN 8
                     ELSE 0 
                 END
             ) AS expected_work_hours
