@@ -13,6 +13,7 @@ import {
 } from "../validations/meetingValidations";
 
 export const dashboardMeetingList = async (user: any) => {
+  // Fetch the user record from the User table to get the user type
   const userRecord = await prisma.user.findFirst({
     where: { employee_id: user.id },
     select: { type: true },
@@ -23,7 +24,52 @@ export const dashboardMeetingList = async (user: any) => {
   }
 
   const userType = userRecord.type;
+
+  // For admin and hr, fetch all meetings
+  if (userType === "admin" || userType === "hr") {
+    const meetings = await prisma.meeting.findMany({
+      where: {
+        is_active: true,
+        is_deleted: false,
+      },
+      include: {
+        meeting_host: {
+          select: {
+            full_name: true,
+          },
+        },
+      },
+      orderBy: { created_at: "desc" },
+    });
+
+    // Convert BigInt to number for JSON serialization to match expected format
+    return meetings.map((meeting) => ({
+      id: Number(meeting.id),
+      title: meeting.title,
+      recurrence_rule: meeting.recurrence_rule,
+      recurrence_type: meeting.recurrence_type,
+      start_time: meeting.start_time,
+      end_time: meeting.end_time,
+      recurrence_start_date: meeting.recurrence_start_date,
+      recurrence_end_date: meeting.recurrence_end_date,
+      host_id: Number(meeting.host_id),
+      location_type: meeting.location_type,
+      location_details: meeting.location_details,
+      agenda: meeting.agenda,
+      status: meeting.status,
+      is_active: meeting.is_active,
+      is_deleted: meeting.is_deleted,
+      created_at: meeting.created_at.toISOString(),
+      updated_at: meeting.updated_at.toISOString(),
+      meeting_host: meeting.meeting_host,
+    }));
+  }
+
+  // For other user types (lead, employee, etc.)
+  // Base employee IDs to filter meetings (user themselves)
   let employeeIds: number[] = [user.id];
+
+  // For lead users, include team members
   if (userType === "lead") {
     const teamMembers = await prisma.teamMember.findMany({
       where: {
@@ -45,12 +91,12 @@ export const dashboardMeetingList = async (user: any) => {
   const meetings = await prisma.meeting.findMany({
     where: {
       OR: [
-        { host_id: user.id },
+        { host_id: user.id }, // User is the host
         {
           attendees: {
             some: {
               employee_id: {
-                in: employeeIds, 
+                in: employeeIds, // User or team members are attendees
               },
               is_active: true,
               is_deleted: false,
@@ -71,6 +117,7 @@ export const dashboardMeetingList = async (user: any) => {
     orderBy: { created_at: "desc" },
   });
 
+  // Convert BigInt to number for JSON serialization to match expected format
   return meetings.map((meeting) => ({
     id: Number(meeting.id),
     title: meeting.title,
