@@ -5,11 +5,12 @@ import {
   getSingleAssetComplaintHandler,
   updateAssetComplaintHandler,
 } from "../controllers/assetComplaintController";
+import { authenticate } from "../middlewares/authMiddleware";
 
 const router = Router();
 
 router.post("/", createAssetComplaintHandler);
-router.post("/all", getAllAssetComplaintHandler);
+router.post("/all",authenticate, getAllAssetComplaintHandler);
 router.post("/single", getSingleAssetComplaintHandler);
 router.put("/", updateAssetComplaintHandler);
 

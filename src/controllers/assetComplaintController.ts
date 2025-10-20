@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import {
   assetComplaintRequestCreateSchema,
   assetComplaintRequestListingSchema,
@@ -12,6 +12,7 @@ import {
   createAssetComplaint,
 } from "../services/assetComplaintServices";
 import { handleAppError } from "../utils/appErrorHandler";
+import { AuthRequest } from "../types/types";
 
 // Module --> Asset Complaint
 // Method --> POST (Protected)
@@ -46,13 +47,22 @@ export const createAssetComplaintHandler = async (
 // Endpoint --> /api/v1/asset-complaints/all
 // Description --> Get All Asset Complaints
 export const getAllAssetComplaintHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const parsedData = assetComplaintRequestListingSchema.parse(req.body);
+    // Ensure user is authenticated
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
 
-    const complaints = await assetComplaintListing(parsedData);
+    const parsedData = assetComplaintRequestListingSchema.parse(req.body); // Assuming schema is defined
+    const complaints = await assetComplaintListing(parsedData, req.userRecord);
 
     return res.status(200).json({
       status: 1,
@@ -60,7 +70,7 @@ export const getAllAssetComplaintHandler = async (
       payload: complaints,
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); // Assuming handleAppError is defined
     return res.status(err.status).json({
       status: 0,
       message: err.message,
