@@ -1,4 +1,4 @@
-import { Request, Response } from "express";
+import { NextFunction, Request, Response } from "express";
 import { handleAppError } from "../utils/appErrorHandler";
 import {
   attendMeetingSchema,
@@ -17,17 +17,28 @@ import {
   meetingMinute,
   toggleMeetingInstanceStatus,
 } from "../services/meetingServices";
+import { AuthRequest } from "../types/types";
 
 // Module --> Meeting
 // Method --> GET (Protected)
 // Endpoint --> /api/v1/meeting/
 // Description --> Fetch meetings
 export const dashboardMeetingListHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const meetings = await dashboardMeetingList();
+    // Ensure user is attached by authentication middleware
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
+
+    const meetings = await dashboardMeetingList(req.userRecord);
 
     return res.status(200).json({
       status: 1,
@@ -35,7 +46,7 @@ export const dashboardMeetingListHandler = async (
       payload: meetings,
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); // Assuming handleAppError is defined elsewhere
     return res.status(err.status).json({
       status: 0,
       message: err.message,
@@ -43,7 +54,6 @@ export const dashboardMeetingListHandler = async (
     });
   }
 };
-
 // Module --> Meeting
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/meetings/instances

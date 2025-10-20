@@ -12,8 +12,55 @@ import {
   MeetingMinute,
 } from "../validations/meetingValidations";
 
-export const dashboardMeetingList = async () => {
+export const dashboardMeetingList = async (user: any) => {
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: user.id },
+    select: { type: true },
+  });
+
+  if (!userRecord) {
+    throw new Error("User not found");
+  }
+
+  const userType = userRecord.type;
+  let employeeIds: number[] = [user.id];
+  if (userType === "lead") {
+    const teamMembers = await prisma.teamMember.findMany({
+      where: {
+        team: {
+          team_lead_id: user.id,
+        },
+        is_active: true,
+        is_deleted: false,
+      },
+      select: {
+        employee_id: true,
+      },
+    });
+
+    const teamMemberIds = teamMembers.map((member) => member.employee_id);
+    employeeIds = [...employeeIds, ...teamMemberIds];
+  }
+
   const meetings = await prisma.meeting.findMany({
+    where: {
+      OR: [
+        { host_id: user.id },
+        {
+          attendees: {
+            some: {
+              employee_id: {
+                in: employeeIds, 
+              },
+              is_active: true,
+              is_deleted: false,
+            },
+          },
+        },
+      ],
+      is_active: true,
+      is_deleted: false,
+    },
     include: {
       meeting_host: {
         select: {
@@ -21,8 +68,29 @@ export const dashboardMeetingList = async () => {
         },
       },
     },
+    orderBy: { created_at: "desc" },
   });
-  return meetings;
+
+  return meetings.map((meeting) => ({
+    id: Number(meeting.id),
+    title: meeting.title,
+    recurrence_rule: meeting.recurrence_rule,
+    recurrence_type: meeting.recurrence_type,
+    start_time: meeting.start_time,
+    end_time: meeting.end_time,
+    recurrence_start_date: meeting.recurrence_start_date,
+    recurrence_end_date: meeting.recurrence_end_date,
+    host_id: Number(meeting.host_id),
+    location_type: meeting.location_type,
+    location_details: meeting.location_details,
+    agenda: meeting.agenda,
+    status: meeting.status,
+    is_active: meeting.is_active,
+    is_deleted: meeting.is_deleted,
+    created_at: meeting.created_at.toISOString(),
+    updated_at: meeting.updated_at.toISOString(),
+    meeting_host: meeting.meeting_host,
+  }));
 };
 
 export const meetingInstanceListById = async (data: MeetingInstanceList) => {
