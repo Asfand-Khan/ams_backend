@@ -298,7 +298,8 @@ export const getAttendanceByDate = async (data: AttendanceByDate) => {
 	      LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
 	      LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id 
         WHERE
-	        emp.is_deleted = FALSE
+	        emp.status = 'active'
+					AND emp.department_id != 1
         ORDER BY COALESCE(att.check_in_time, '9999-12-31 23:59:58') ASC
       `;
 
@@ -323,7 +324,7 @@ export const dailyAttendanceSummary = async () => {
     FROM Employee e
     LEFT JOIN Attendance a
       ON e.id = a.employee_id AND a.date = CURDATE()
-    WHERE e.status = 'active' AND e.is_active = 1 AND e.is_deleted = 0;
+    WHERE e.status = 'active' AND e.is_deleted = 0 AND e.department_id != 1;
   `;
 
   const summary = result[0];
