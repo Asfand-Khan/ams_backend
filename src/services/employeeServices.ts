@@ -74,7 +74,7 @@ export const getAllEmployees = async (user: any) => {
   });
   return allEmployees.map((employee) => ({
     ...employee,
-    id: String(employee.id), 
+    id: employee.id, 
   }));
 };
 
