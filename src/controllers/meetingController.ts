@@ -174,13 +174,22 @@ export const attendMeetingHandler = async (
 // Endpoint --> /api/v1/meeting/minutes
 // Description --> Create meeting minutes
 export const meetingMinutesHandler = async (
-  req: Request,
-  res: Response
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
 ): Promise<any> => {
   try {
-    const parsedData = meetingMinuteSchema.parse(req.body);
+    // Ensure user is authenticated
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "User not authenticated",
+        payload: [],
+      });
+    }
 
-    const newMinutes = await meetingMinute(parsedData);
+    const parsedData = meetingMinuteSchema.parse(req.body); // Assuming schema is defined
+    const newMinutes = await meetingMinute(parsedData, req.userRecord.id);
 
     return res.status(201).json({
       status: 1,
@@ -188,7 +197,7 @@ export const meetingMinutesHandler = async (
       payload: [newMinutes],
     });
   } catch (error) {
-    const err = handleAppError(error);
+    const err = handleAppError(error); // Assuming handleAppError is defined
     return res.status(err.status).json({
       status: 0,
       message: err.message,

@@ -13,7 +13,6 @@ import {
 } from "../validations/meetingValidations";
 
 export const dashboardMeetingList = async (user: any) => {
-  // Fetch the user record from the User table to get the user type
   const userRecord = await prisma.user.findFirst({
     where: { employee_id: user.id },
     select: { type: true },
@@ -342,7 +341,7 @@ export const attendMeeting = async (data: AttendMeeting) => {
   return updatedMeeting;
 };
 
-export const meetingMinute = async (data: MeetingMinute) => {
+export const meetingMinute = async (data: MeetingMinute,created_by: number) => {
   const meeting = await prisma.meetingInstance.findUnique({
     where: {
       id: data.meeting_instance_id,
@@ -367,7 +366,7 @@ export const meetingMinute = async (data: MeetingMinute) => {
           meeting_instance_id: data.meeting_instance_id,
           minutes: data.minutes,
           meeting_id: data.meeting_id,
-          created_by: 1,
+          created_by,
         },
       });
     } else {
@@ -377,6 +376,7 @@ export const meetingMinute = async (data: MeetingMinute) => {
         },
         data: {
           minutes: data.minutes,
+          created_by,
         },
       });
     }
