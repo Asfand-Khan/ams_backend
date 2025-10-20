@@ -365,7 +365,7 @@ export const attendanceSummaryV2 = async (
     JOIN Designation des ON e.designation_id = des.id
     CROSS JOIN DateRange dr
     WHERE e.id = ${employee_id}
-    e.status = 'active'
+    AND e.status = 'active'
     AND e.is_deleted = 0
     AND e.department_id != 1
     AND dr.date >= e.join_date 
