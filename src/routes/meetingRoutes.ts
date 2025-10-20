@@ -17,7 +17,7 @@ router.post("/all", meetingListHandler);
 router.post("/", createMeetingHandler);
 router.post("/attend", attendMeetingHandler);
 router.post("/instances", meetingInstanceListHandler);
-router.post("/minutes", meetingMinutesHandler);
+router.post("/minutes", authenticate, meetingMinutesHandler);
 router.post("/instances/status", meetingInstanceStatusHandler);
 
 export default router;
