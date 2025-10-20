@@ -24,7 +24,7 @@ export const getOverallAttendanceSummaryReport = async (
             JOIN Department d ON e.department_id = d.id
             JOIN Designation des ON e.designation_id = des.id
             CROSS JOIN DateRange dr
-            WHERE e.is_active = 1 AND e.is_deleted = 0
+            WHERE e.status = 'active' AND e.is_deleted = 0 AND e.department_id != 1
         )
         SELECT 
             ed.employee_id,
@@ -115,7 +115,7 @@ export const getAttendanceDetail = async (data: OverallAttendanceSummary) => {
             LEFT JOIN OfficeLocation o1 ON att.check_in_office_id = o1.id
             LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
           WHERE
-              emp.is_deleted = false AND emp.is_active = true
+              emp.status = 'active' AND emp.is_deleted = 0 AND emp.department_id != 1
           ORDER BY
               emp.id ASC;
       `;
