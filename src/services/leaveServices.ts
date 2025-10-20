@@ -203,13 +203,7 @@ export const allLeaves = async (data: LeaveListing, user: any) => {
   `;
 
   const leaves = await prisma.$queryRawUnsafe(query, ...parameters);
-  return (leaves as any[]).map((record) => ({
-    ...record,
-    leave_id: record.leave_id,
-    employee_id: record.employee_id,
-    leave_type_id: record.leave_type_id,
-    approved_by: record.approved_by ? record.approved_by : null,
-  }));
+  return leaves;
 };
 
 export const singleLeave = async (data: SingleLeave) => {
