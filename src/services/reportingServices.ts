@@ -219,7 +219,7 @@ export const getAttendanceDetail = async (data: OverallAttendanceSummary,user:an
             LEFT JOIN OfficeLocation o2 ON att.check_out_office_id = o2.id
           WHERE
               emp.status = 'active' AND emp.is_deleted = 0 AND emp.department_id != 1
-               ${employeeIds.length > 0 ? `AND e.id IN (${employeeIds.join(",")})` : ""}
+               ${employeeIds.length > 0 ? `AND emp.id IN (${employeeIds.join(",")})` : ""}
           ORDER BY
               emp.id ASC;
       `;
