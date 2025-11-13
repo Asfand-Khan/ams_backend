@@ -20,12 +20,12 @@ export const getAllEmployees = async (user: any) => {
     throw new Error("User not found");
   }
   const userType = userRecord.type;
-  if (userType === "employee") {
-    return [];
-  }
   let whereClause: any = {
     is_deleted: false,
   };
+  if (userType === "employee") {
+    whereClause.id = user.id;
+  }
   if (userType === "lead") {
     const teamMembers = await prisma.teamMember.findMany({
       where: {
@@ -47,6 +47,7 @@ export const getAllEmployees = async (user: any) => {
       in: employeeIds,
     };
   }
+
   const allEmployees = await prisma.employee.findMany({
     where: whereClause,
     select: {
@@ -74,7 +75,7 @@ export const getAllEmployees = async (user: any) => {
   });
   return allEmployees.map((employee) => ({
     ...employee,
-    id: employee.id, 
+    id: employee.id,
   }));
 };
 
@@ -487,8 +488,12 @@ export const getAllUsersWithEmployee = async (user: any) => {
           cnic: user.employee.cnic,
           gender: user.employee.gender,
           dob: user.employee.dob ? user.employee.dob.toISOString() : null,
-          join_date: user.employee.join_date ? user.employee.join_date.toISOString() : null,
-          leave_date: user.employee.leave_date ? user.employee.leave_date.toISOString() : null,
+          join_date: user.employee.join_date
+            ? user.employee.join_date.toISOString()
+            : null,
+          leave_date: user.employee.leave_date
+            ? user.employee.leave_date.toISOString()
+            : null,
           department_id: Number(user.employee.department_id),
           designation_id: Number(user.employee.designation_id),
           profile_picture: user.employee.profile_picture,

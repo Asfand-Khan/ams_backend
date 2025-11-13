@@ -154,6 +154,9 @@ export const attendanceCorrectionListing = async (
         in: employeeIds,
       };
     }
+     if (userType === "employee") {
+    whereClause.employee_id = user.id;
+  } 
   }
 
   const correction = await prisma.attendanceCorrectionRequest.findMany({
