@@ -1,6 +1,7 @@
 const capitalize = (str: string): string =>
     str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
 export const getNotificationTemplate = (
+  username: string,
   title: string,
   type: string,
   message: string,
@@ -46,6 +47,7 @@ export const getNotificationTemplate = (
       padding: 12px 16px;
       margin-top: 10px;
       font-style: italic;
+       white-space: pre-wrap;
     }
     .footer {
       background-color: #f4f4f4;
@@ -72,12 +74,9 @@ export const getNotificationTemplate = (
   <div class="container">
     <div class="header">${title}</div>
     <div class="content">
-      <p>Hello,</p>
-      <p>You have a new <strong>${capitalize(
-            type
-          )}</strong> notification.</p>
       <div class="message">
-        ${message}
+         Dear ${username},<br>
+         ${message.replace(/\n/g, "<br>")}
       </div>
       <p>Sent at: ${sent_at}</p>
     </div>

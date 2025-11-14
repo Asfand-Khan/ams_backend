@@ -17,10 +17,21 @@ export const createNotificationSchema = z.object({
     required_error: "Priority is required",
   }),
   user_id: z
-    .number({ required_error: "User ID is required" })
-    .int({ message: "User ID must be an integer" })
-    .positive({ message: "User ID must be a positive number" })
-    .nullable()
+    .union([
+      z
+        .number({ required_error: "User ID must be a number" })
+        .int({ message: "User ID must be an integer" })
+        .positive({ message: "User ID must be positive" }),
+      z
+        .array(
+          z
+            .number({ required_error: "User ID must be a number" })
+            .int({ message: "User ID must be an integer" })
+            .positive({ message: "User ID must be positive" })
+        )
+        .min(1, "At least one user ID is required"),
+    ])
+       .nullable()
     .optional(),
 });
 

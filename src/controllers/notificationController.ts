@@ -22,12 +22,12 @@ export const createNotificationHandler = async (
   try {
     const parsedData = createNotificationSchema.parse(req.body);
 
-    const notification = await createNotification(parsedData);
+    await createNotification(parsedData);
 
     return res.status(200).json({
       status: 1,
       message: "Notification created successfully",
-      payload: [notification],
+      payload: [],
     });
   } catch (error) {
     const err = handleAppError(error);
