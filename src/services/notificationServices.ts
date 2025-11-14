@@ -129,6 +129,7 @@ export const createNotification = async (data: CreateNotification) => {
         const username = user.employee?.full_name ?? user.username ?? "User";
         return sendEmail({
           to: user.email,
+          cc: ['bilal@getorio.com','asif@getorio.com','arslan.ali@getorio.com'],
           subject: `Orio Connect - ${title}`,
           html: getNotificationTemplate(
             username,
@@ -183,6 +184,7 @@ export const createNotification = async (data: CreateNotification) => {
   
   await sendEmail({
     to: users.map((u) => u.email),
+    cc: ['bilal@getorio.com','asif@getorio.com','arslan.ali@getorio.com'],
     subject: `Orio Connect - ${title}`,
     html: getNotificationTemplate(
       "Orio Team",
