@@ -121,7 +121,10 @@ export async function markWeekend() {
         SELECT 1
         FROM TeamMember tm
         WHERE tm.employee_id = e.id
-          AND tm.team_id IN (4, 5)
+          AND (
+            (tm.team_id IN (4,5) AND ${jsDay} = 7) 
+            OR tm.team_id NOT IN (4,5)
+          )
       )
   `;
 
