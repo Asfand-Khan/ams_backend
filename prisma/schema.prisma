@@ -595,7 +595,7 @@ model AssetComplaintRequest {
   category     ComplaintCategory
   asset_type   AssetType
 
-  reason             String
+  reason             String           @db.LongText
   status             ComplaintStatus @default(pending)
   requested_at       DateTime        @default(now())
   reviewed_at        DateTime?
