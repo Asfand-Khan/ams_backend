@@ -34,8 +34,8 @@ export const getNotificationTemplate = (
           <!-- Header -->
           <tr>
             <td bgcolor="#0074fc" align="center" style="padding: 24px;">
-              <img src="https://jubileegeneral.com.pk/jgi_admin/assets/images/logo.png" width="130" style="display:block; border:0;"/>
-              <h2 style="margin: 0; color:#fff; font-size:22px;">${capitalize(title)}</h2>
+              <img src="https://jubileegeneral.com.pk/jgi_admin/assets/images/logo.png" width="130" style="display:block; border:0; margin-bottom: 13px;" />
+              <h2 style="margin: 0; color:#fff; font-size:22px;">${title}</h2>
             </td>
           </tr>
 
