@@ -338,7 +338,10 @@ export const attendMeeting = async (data: AttendMeeting) => {
   return updatedMeeting;
 };
 
-export const meetingMinute = async (data: MeetingMinute,created_by: number) => {
+export const meetingMinute = async (
+  data: MeetingMinute,
+  created_by: number
+) => {
   const meeting = await prisma.meetingInstance.findUnique({
     where: {
       id: data.meeting_instance_id,
@@ -463,7 +466,6 @@ export const meetingMinute = async (data: MeetingMinute,created_by: number) => {
       cc: [meetingInfo.host_email, meetingInfo.hr_email]
         .filter(Boolean)
         .join(","),
-      bcc: 'rajaammarali2003@gmail.com',  
       html: getMeetingTemplate("minutes-published", {
         employee_name: "Team",
         meeting_id: meetingInfo.meeting_id.toString(),

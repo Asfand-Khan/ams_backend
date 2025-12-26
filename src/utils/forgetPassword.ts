@@ -1,10 +1,10 @@
-export const getOTPTemplate = (otp: string | null, name: string, year: string = "2025") => {
+export const getForgotPasswordTemplate = (name: string, password: string, year: string = "2025") => {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Your Login OTP</title>
+<title>Your Orio Account Password</title>
 </head>
 
 <body style="margin:0; padding:0; background-color:#ecf0f1; font-family: Arial, sans-serif; color:#333;">
@@ -17,7 +17,7 @@ export const getOTPTemplate = (otp: string | null, name: string, year: string = 
           <tr>
             <td bgcolor="#0074fc" align="center" style="padding: 24px;">
               <img src="https://getorio.com/images/png/logo-white.png" width="130" alt="Orio Logo" style="display:block; border:0; margin-bottom: 13px;" />
-              <h2 style="margin: 0; color:#fff; font-size:22px;">Your Login One-Time Password (OTP)</h2>
+              <h2 style="margin: 0; color:#fff; font-size:22px;">Password Recovery</h2>
             </td>
           </tr>
 
@@ -27,28 +27,24 @@ export const getOTPTemplate = (otp: string | null, name: string, year: string = 
               <p style="margin:0 0 12px 0;">Hi <strong>${name}</strong>,</p>
 
               <p style="margin:0 0 12px 0;">
-                You are attempting to log in to your Orio account. For security, please use the One-Time Password (OTP) below to complete your login.
+                As requested, here is your Orio Connect password:
               </p>
 
-              <p style="margin:0 0 12px 0;">
-                This OTP is valid for the next 10 minutes only.
-              </p>
-
-              <!-- OTP Box -->
+              <!-- Password Box -->
               <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="margin:20px 0; border-radius:8px;">
                 <tr>
-                  <td align="center" style="padding:24px; font-size:32px; font-weight:bold; color:#0074fc; letter-spacing:10px;">
-                    ${otp}
+                  <td align="center" style="padding:28px; font-size:28px; font-weight:bold; color:#d93025; letter-spacing:5px;">
+                    ${password}
                   </td>
                 </tr>
               </table>
 
-              <p style="margin:0 0 12px 0;">
-                <strong>Important:</strong> Do not share this OTP with anyone. Orio staff will never ask for your OTP.
+              <p style="margin:20px 0 12px 0; color:#d93025; font-weight:bold;">
+                ⚠️ Important: For your security, please change this password immediately after logging in.
               </p>
 
               <p style="margin:0 0 12px 0;">
-                If you did not request this login, please ignore this email and consider securing your account immediately.
+                We recommend choosing a strong, unique password.
               </p>
             </td>
           </tr>

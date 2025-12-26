@@ -77,13 +77,14 @@ export const createLeave = async (data: Leave, days: number) => {
     }[];
 
     if (employee.length === 0) throw new Error("Employee not found");
-
+    const status = leave.status;
+    const capitalizedStatus =
+      status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
     for (const emp of employee) {
       await sendEmail({
         to: emp.employee_email,
-        subject: `ORIO CONNECT - LEAVE REQUEST ${leave.status.toUpperCase()}`,
-        cc: emp.hr_email,
-        bcc: emp.team_lead_email,
+        subject: `Orio Connect - Leave Request ${capitalizedStatus}`,
+        cc: [emp.hr_email, emp.team_lead_email],
         html: getLeaveTemplate({
           status: leave.status,
           applied_on: format(leave.applied_on, "yyyy-MM-dd", {
@@ -164,7 +165,9 @@ export const allLeaves = async (data: LeaveListing, user: any) => {
       if (employeeIds.length === 0) {
         return [];
       }
-      whereConditions.push(`l.employee_id IN (${employeeIds.map(() => "?").join(", ")})`);
+      whereConditions.push(
+        `l.employee_id IN (${employeeIds.map(() => "?").join(", ")})`
+      );
       parameters.push(...employeeIds);
     }
   }
@@ -283,7 +286,7 @@ export const leaveRejectApprove = async (
         status: "rejected",
         remarks: data.remarks,
         approved_on: new Date(),
-        approved_by: approved_by ,
+        approved_by: approved_by,
       },
       include: {
         approver: {
@@ -346,7 +349,7 @@ export const leaveRejectApprove = async (
             status: "approved",
             remarks: data.remarks,
             approved_on: new Date(),
-            approved_by: approved_by ,
+            approved_by: approved_by,
           },
           include: {
             leave_type: {
@@ -393,13 +396,14 @@ export const leaveRejectApprove = async (
   }[];
 
   if (employee.length === 0) throw new Error("Employee not found");
-
+  const status = updatedLeave.status;
+  const capitalizedStatus =
+    status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
-      subject: `ORIO CONNECT - LEAVE REQUEST ${updatedLeave.status.toUpperCase()}`,
-      cc: emp.hr_email,
-      bcc: emp.team_lead_email,
+      subject: `Orio Connect - Leave Request ${capitalizedStatus}`,
+      cc: [emp.hr_email, emp.team_lead_email],
       html: getLeaveTemplate({
         status: updatedLeave.status,
         applied_on: format(updatedLeave.applied_on, "yyyy-MM-dd", {
@@ -426,4 +430,133 @@ export const leaveRejectApprove = async (
   }
 
   return updatedLeave;
+};
+
+export const employeeLeaveSummary = async (employee_id: number) => {
+  const result: any = await prisma.$queryRaw`
+    SELECT
+        e.full_name,
+
+        SUM(CASE WHEN lt.NAME = 'Annual' THEN elq.used_days ELSE 0 END) AS annual_used,
+        SUM(CASE WHEN lt.NAME = 'Annual' THEN lt.total_quota ELSE 0 END) AS annual_total,
+        SUM(CASE WHEN lt.NAME = 'Annual' THEN (lt.total_quota - elq.used_days) ELSE 0 END) AS annual_remaining,
+
+        SUM(CASE WHEN lt.NAME = 'Sick' THEN elq.used_days ELSE 0 END) AS sick_used,
+        SUM(CASE WHEN lt.NAME = 'Sick' THEN lt.total_quota ELSE 0 END) AS sick_total,
+        SUM(CASE WHEN lt.NAME = 'Sick' THEN (lt.total_quota - elq.used_days) ELSE 0 END) AS sick_remaining,
+
+        SUM(CASE WHEN lt.NAME = 'Casual' THEN elq.used_days ELSE 0 END) AS casual_used,
+        SUM(CASE WHEN lt.NAME = 'Casual' THEN lt.total_quota ELSE 0 END) AS casual_total,
+        SUM(CASE WHEN lt.NAME = 'Casual' THEN (lt.total_quota - elq.used_days) ELSE 0 END) AS casual_remaining
+
+    FROM EmployeeLeaveQuota elq
+    JOIN LeaveType lt ON elq.leave_type_id = lt.id
+    JOIN Employee e ON elq.employee_id = e.id
+
+    WHERE elq.YEAR = YEAR(CURDATE())
+      AND elq.is_active = 1
+      AND elq.is_deleted = 0
+      AND elq.employee_id = ${employee_id}
+
+    GROUP BY e.full_name;
+  `;
+
+  if (!result || result.length === 0) return null;
+
+  const row = result[0];
+
+  // BigInt safe serialization
+  const serialize = (val: any) => (typeof val === "bigint" ? Number(val) : val);
+
+  return {
+    full_name: row.full_name,
+
+    annual: {
+      used: serialize(row.annual_used),
+      total: serialize(row.annual_total),
+      remaining: serialize(row.annual_remaining),
+    },
+
+    sick: {
+      used: serialize(row.sick_used),
+      total: serialize(row.sick_total),
+      remaining: serialize(row.sick_remaining),
+    },
+
+    casual: {
+      used: serialize(row.casual_used),
+      total: serialize(row.casual_total),
+      remaining: serialize(row.casual_remaining),
+    },
+  };
+};
+
+export const getEmployeeLeaveDetails = async (employeeId?: number) => {
+  const result: any = await prisma.$queryRaw`
+    SELECT 
+        e.id AS employee_id,
+        e.full_name,
+
+        COALESCE(
+            GROUP_CONCAT(
+                CASE 
+                    WHEN lt.name = 'Annual' 
+                    THEN CONCAT(
+                        DATE_FORMAT(l.start_date, '%Y-%m-%d'), ' to ', 
+                        DATE_FORMAT(l.end_date, '%Y-%m-%d'), 
+                        ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
+                    )
+                END
+                ORDER BY l.start_date
+                SEPARATOR '\n'
+            ), 'No Annual Leave'
+        ) AS annual_leaves,
+
+        COALESCE(
+            GROUP_CONCAT(
+                CASE 
+                    WHEN lt.name = 'Sick' 
+                    THEN CONCAT(
+                        DATE_FORMAT(l.start_date, '%Y-%m-%d'), ' to ', 
+                        DATE_FORMAT(l.end_date, '%Y-%m-%d'), 
+                        ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
+                    )
+                END
+                ORDER BY l.start_date
+                SEPARATOR '\n'
+            ), 'No Sick Leave'
+        ) AS sick_leaves,
+
+        COALESCE(
+            GROUP_CONCAT(
+                CASE 
+                    WHEN lt.name = 'Casual' 
+                    THEN CONCAT(
+                        DATE_FORMAT(l.start_date, '%Y-%m-%d'), ' to ', 
+                        DATE_FORMAT(l.end_date, '%Y-%m-%d'), 
+                        ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
+                    )
+                END
+                ORDER BY l.start_date
+                SEPARATOR '\n'
+            ), 'No Casual Leave'
+        ) AS casual_leaves
+
+    FROM \`Leave\` l
+    JOIN Employee e ON l.employee_id = e.id
+    JOIN LeaveType lt ON l.leave_type_id = lt.id
+    WHERE l.status = 'approved'
+    AND e.id = ${employeeId}
+    GROUP BY e.id, e.full_name
+    ORDER BY e.full_name;
+  `;
+
+  if (!result || result.length === 0) return [];
+  return result.map((row: any) => ({
+    employee_id: row.employee_id,
+    full_name: row.full_name,
+    annual: row.annual_leaves.split("\n"),
+    sick: row.sick_leaves.split("\n"),
+    casual: row.casual_leaves.split("\n"),
+  }));
 };

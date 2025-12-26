@@ -20,6 +20,7 @@ import { sendEmail } from "../utils/sendEmail";
 import { generateToken } from "../utils/authHelpers";
 import { handleAppError } from "../utils/appErrorHandler";
 import { getOTPTemplate } from "../utils/otpTemplate";
+import { getForgotPasswordTemplate } from "../utils/forgetPassword";
 
 // Module --> Auth
 // Endpoint --> /api/v1/auth/login
@@ -195,8 +196,8 @@ export const forgetPasswordHandler = async (
 
     await sendEmail({
       to: user.email,
-      subject: "Orio Attendance - Forget Password",
-      text: "Your password is: " + user.password_hash,
+      subject: "Orio Connect - Forget Password",
+      html: getForgotPasswordTemplate("Employee", user.password_hash),
     });
 
     return res.status(200).json({

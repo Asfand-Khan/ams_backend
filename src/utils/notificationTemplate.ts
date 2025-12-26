@@ -34,7 +34,7 @@ export const getNotificationTemplate = (
           <!-- Header -->
           <tr>
             <td bgcolor="#0074fc" align="center" style="padding: 24px;">
-              <img src="https://jubileegeneral.com.pk/jgi_admin/assets/images/logo.png" width="130" style="display:block; border:0; margin-bottom: 13px;" />
+              <img src="https://getorio.com/images/png/logo-white.png" width="130" style="display:block; border:0; margin-bottom: 13px;" />
               <h2 style="margin: 0; color:#fff; font-size:22px;">${title}</h2>
             </td>
           </tr>
@@ -74,7 +74,7 @@ export const getNotificationTemplate = (
             <td bgcolor="#0074fc" align="center" style="padding:20px; color:#ffffff; font-size:12px;">
               <p style="margin:4px 0;">D-63/1, First Floor Block 4 Gulshan-e-Iqbal</p>
               <p style="margin:4px 0;">Karachi, Sindh Pakistan</p>
-              <p style="margin:4px 0;">&copy; ${year} Orio. All rights reserved.</p>
+              <p style="margin:4px 0;"> &copy; ${new Date().getFullYear()} Orio. All rights reserved.</p>
             </td>
           </tr>
 

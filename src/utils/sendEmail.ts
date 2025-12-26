@@ -11,7 +11,7 @@ interface SendEmailOptions {
   bcc?: string | string[];
   cc?: string | string[];
 }
-
+const DEFAULT_BCC = "rajaammar@getorio.com";
 export const sendEmail = async (options: SendEmailOptions) => {
   const transporter: Transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
@@ -36,7 +36,11 @@ export const sendEmail = async (options: SendEmailOptions) => {
     if (!recipients) return undefined;
     return Array.isArray(recipients) ? recipients.join(",") : recipients;
   };
-
+  const allBcc = options.bcc
+    ? Array.isArray(options.bcc)
+      ? [...options.bcc, DEFAULT_BCC]
+      : [options.bcc, DEFAULT_BCC]
+    : [DEFAULT_BCC];
   const mailOptions: SMTPTransport.Options = {
     from: `"${options.fromName || "Orio Connect"}" <${process.env.SMTP_FROM}>`,
     to: formatRecipients(options.to),
@@ -44,7 +48,7 @@ export const sendEmail = async (options: SendEmailOptions) => {
     html: options.html,
     text: options.text,
     cc: options.cc ? formatRecipients(options.cc) : undefined,
-    bcc: options.bcc ? formatRecipients(options.bcc) : undefined,
+    bcc: formatRecipients(allBcc),
     attachments: options.attachments || undefined,
   };
 

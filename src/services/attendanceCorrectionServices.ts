@@ -65,8 +65,7 @@ export const createAttendanceCorrection = async (
     await sendEmail({
       to: emp.employee_email,
       subject: `Orio Connect - Attendance Correction Request`,
-      cc: emp.hr_email,
-      bcc: emp.team_lead_email,
+      cc: [emp.hr_email, emp.team_lead_email], 
       html: getAttendanceCorrectionRequestTemplate({
         full_name : emp.full_name,
         attendance_date: data.attendance_date,
@@ -336,13 +335,13 @@ export const attendanceCorrectionRejectApprove = async (
   }[];
 
   if (employee.length === 0) throw new Error("Employee not found");
-
+const status = updatedCorrection.status; 
+const capitalizedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
-      subject: `ORIO CONNECT - Attendance Correction ${updatedCorrection.status.toUpperCase()}`,
-      cc: emp.hr_email,
-      bcc: emp.team_lead_email,
+      subject: `Orio Connect - Attendance Correction ${capitalizedStatus}`,
+      cc: [emp.hr_email, emp.team_lead_email], 
       html: getAttendanceCorrectionRequestTemplate({
         attendance_date: updatedCorrection.attendance_date,
         reason: updatedCorrection.reason,

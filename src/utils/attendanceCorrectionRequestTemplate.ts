@@ -10,340 +10,169 @@ export const getAttendanceCorrectionRequestTemplate = ({
   original_check_in,
   original_check_out,
   created_at,
-  year,
+  year = "2025",
 }: {
-  status: string;
+  status: "pending" | "approved" | "rejected";
   id: string;
   full_name: string;
-  attendance_date: string;
   request_type: string;
+  attendance_date: string;
   reason: string;
   requested_check_in: string | null;
   requested_check_out: string | null;
   original_check_in: string | null;
   original_check_out: string | null;
   created_at: string;
-  year: string;
+  year?: string;
 }) => {
-  const safeHtml = (content: string): string =>
-    content
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;")
-      .replace(/\n/g, "<br>");
+  const capitalize = (str: string): string =>
+    str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
+
   const formatRequestType = (type: string): string =>
     type
-      .split('_')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(' ');
+      .split("_")
+      .map((word) => capitalize(word))
+      .join(" ");
 
-  const safeFullName = safeHtml(full_name);
-  const safeRequestType = safeHtml(formatRequestType(request_type));
-  const safeReason = safeHtml(reason);
-  const safeStatus = safeHtml(status.charAt(0).toUpperCase() + status.slice(1));
-  const statusClass = {
-    pending: "status-pending",
-    approved: "status-approved",
-    rejected: "status-rejected",
-  }[status.toLowerCase()] || "status-pending";
-return `<!DOCTYPE html>
+  const to12Hour = (time: string | null): string => {
+    if (!time) return "N/A";
+
+    const trimmed = time.trim();
+    if (!trimmed) return "N/A";
+    const parts = trimmed.split(":");
+    let hours = parseInt(parts[0], 10);
+    const minutes = parts[1]?.padStart(2, "0") || "00";
+    const seconds = parts[2] ? `:${parts[2]}` : "";
+
+    if (isNaN(hours)) return trimmed;
+
+    const period = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+
+    return `${hours}:${minutes} ${period}`;
+  };
+
+  const statusText = capitalize(status);
+  const statusColor =
+    status === "approved"
+      ? "#2e7d32"
+      : status === "rejected"
+      ? "#d93025"
+      : "#e67e22"; // pending
+
+  const safe = (str: string | null | undefined): string =>
+    str ? str.replace(/\n/g, "<br>") : "N/A";
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Attendance Correction Request Notification</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            color: #333;
-            background-color: #f4f4f4;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 600px;
-            margin: 20px auto;
-            background-color: #ffffff;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-        }
-        .header {
-            background-color: #007bff;
-            color: #ffffff;
-            padding: 10px 20px;
-            text-align: center;
-            border-radius: 5px 5px 0 0;
-        }
-        .content {
-            padding: 20px;
-        }
-        .content h2 {
-            color: #007bff;
-            font-size: 24px;
-            margin-top: 0;
-        }
-        .content p {
-            margin: 10px 0;
-        }
-        .status-approved {
-            border-left: 5px solid #28a745;
-            padding-left: 15px;
-        }
-        .status-pending {
-            border-left: 5px solid #ffc107;
-            padding-left: 15px;
-        }
-        .status-rejected {
-            border-left: 5px solid #dc3545;
-            padding-left: 15px;
-        }
-        .details-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 15px 0;
-        }
-        .details-table th, .details-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        .details-table th {
-            background-color: #f8f9fa;
-            color: #333;
-        }
-        .footer {
-            background-color: #f4f4f4;
-            padding: 12px 24px;
-            font-size: 12px;
-            text-align: center;
-            color: #777;
-            }
-        .button {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 5px;
-            margin-top: 15px;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Attendance Correction Request</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Attendance Correction Request</h1>
-        </div>
-         <div class="content ${statusClass}">
-            <p>Dear ${safeFullName},</p>
-      <p>Your Attendance Correction request for <strong>${attendance_date}</strong> has been <strong>${safeStatus}</strong>. Below are the details of your request:</p>
-        <table class="details-table">
+
+<body style="margin:0; padding:0; background-color:#ecf0f1; font-family: Arial, sans-serif; color:#333;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ecf0f1">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-collapse: collapse;">
+          
+          <!-- Header -->
+          <tr>
+            <td bgcolor="#0074fc" align="center" style="padding: 24px;">
+              <img src="https://getorio.com/images/png/logo-white.png" width="130" alt="Orio Logo" style="display:block; border:0; margin-bottom: 13px;" />
+              <h2 style="margin: 0; color:#fff; font-size:22px;">Attendance Correction Request</h2>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 24px; font-size:15px; line-height:1.6;">
+              <p style="margin:0 0 12px 0;">Dear <strong>${full_name}</strong>,</p>
+
+              <p style="margin:0 0 12px 0;">
+                Your attendance correction request for <strong>${attendance_date}</strong> has been 
+                <span style="color:${statusColor}; font-weight:bold;">${statusText}</span>.
+              </p>
+
+              <!-- Details Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="margin:16px 0;">
                 <tr>
-                    <th>Request Type</th>
-                    <td>${safeRequestType}</td>
+                  <td style="padding:16px;">
+                    <table width="100%" cellpadding="8" cellspacing="0" border="0">
+                      <tr>
+                        <td style="font-weight:bold; width:200px;">Request Type</td>
+                        <td>${formatRequestType(request_type)}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">Reason</td>
+                        <td>${safe(reason)}</td>
+                      </tr>
+                      ${
+                        requested_check_in
+                          ? `
+                      <tr>
+                        <td style="font-weight:bold;">Requested Check-In</td>
+                        <td>${to12Hour(requested_check_in)}</td>
+                      </tr>`
+                          : ""
+                      }
+                      ${
+                        requested_check_out
+                          ? `
+                      <tr>
+                        <td style="font-weight:bold;">Requested Check-Out</td>
+                        <td>${to12Hour(requested_check_out)}</td>
+                      </tr>`
+                          : ""
+                      }
+                      ${
+                        original_check_in
+                          ? `
+                      <tr>
+                        <td style="font-weight:bold;">Original Check-In</td>
+                        <td>${to12Hour(original_check_in)}</td>
+                      </tr>`
+                          : ""
+                      }
+                      ${
+                        original_check_out
+                          ? `
+                      <tr>
+                        <td style="font-weight:bold;">Original Check-Out</td>
+                        <td>${to12Hour(original_check_out)}</td>
+                      </tr>`
+                          : ""
+                      }
+                      <tr>
+                        <td style="font-weight:bold;">Status</td>
+                        <td style="color:${statusColor}; font-weight:bold;">${statusText}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">Submitted On</td>
+                       <td>${created_at}</td>
+                      </tr>
+                    </table>
+                  </td>
                 </tr>
-                <tr>
-                    <th>Reason</th>
-                    <td>${safeReason}</td>
-                </tr>
-                ${requested_check_in ? `
-                <tr>
-                <th>Requested Check-In</th>
-                <td>${requested_check_in}</td>
-                </tr>
-                ` : ''}
-                ${requested_check_out ? `
-                <tr>
-                <th>Requested Check-Out</th>
-                <td>${requested_check_out}</td>
-                </tr>
-                ` : ''}
-                ${original_check_in ? `
-                <tr>
-                <th>Original Check-In</th>
-                <td>${original_check_in}</td>
-                </tr>
-                ` : ''}
-                ${original_check_out ? `
-                <tr>
-                <th>Original Check-Out</th>
-                <td>${original_check_out}</td>
-                </tr>
-                ` : ''}
-                <tr>
-                    <th>Status</th>
-                    <td>${safeStatus}</td>
-                </tr>
-            </table>
-            <p><strong>Submitted On:</strong> ${created_at}</p>
-        </div>
-       <div class="footer">
-      &copy; ${year} Orio. All rights reserved.
-    </div>
-    </div>
+              </table>
+
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td bgcolor="#0074fc" align="center" style="padding:20px; color:#ffffff; font-size:12px;">
+              <p style="margin:4px 0;">D-63/1, First Floor Block 4 Gulshan-e-Iqbal</p>
+              <p style="margin:4px 0;">Karachi, Sindh Pakistan</p>
+              <p style="margin:4px 0;"> &copy; ${new Date().getFullYear()} Orio. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
 };
-
-// export const getAttendanceCorrectionApproveTemplate = ({
-//   status,
-//   id,
-//   request_type,
-//   attendance_date,
-//   reason,
-//   requested_check_in,
-//   requested_check_out,
-//   original_check_in,
-//   original_check_out,
-//   created_at,
-//   year,
-//   fullname,
-// }: {
-//   status: string;
-//   id: string;
-//   attendance_date: string;
-//   request_type: string;
-//   reason: string;
-//   requested_check_in: string | null;
-//   requested_check_out: string | null;
-//   original_check_in: string | null;
-//   original_check_out: string | null;
-//   created_at: string;
-//   year: string;
-//   fullname: string;
-// }) => `<!DOCTYPE html>
-// <html lang="en">
-// <head>
-//     <meta charset="UTF-8">
-//     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-//     <title>Attendance Correction Request Notification</title>
-//     <style>
-//         body {
-//             font-family: Arial, sans-serif;
-//             line-height: 1.6;
-//             color: #333;
-//             background-color: #f4f4f4;
-//             margin: 0;
-//             padding: 0;
-//         }
-//         .container {
-//             max-width: 600px;
-//             margin: 20px auto;
-//             background-color: #ffffff;
-//             padding: 20px;
-//             border-radius: 5px;
-//             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-//         }
-//         .header {
-//             background-color: #007bff;
-//             color: #ffffff;
-//             padding: 10px 20px;
-//             text-align: center;
-//             border-radius: 5px 5px 0 0;
-//         }
-//         .content {
-//             padding: 20px;
-//         }
-//         .content h2 {
-//             color: #007bff;
-//             font-size: 24px;
-//             margin-top: 0;
-//         }
-//         .content p {
-//             margin: 10px 0;
-//         }
-//         .status-approved {
-//             border-left: 5px solid #28a745;
-//             padding-left: 15px;
-//         }
-//         .status-pending {
-//             border-left: 5px solid #ffc107;
-//             padding-left: 15px;
-//         }
-//         .status-rejected {
-//             border-left: 5px solid #dc3545;
-//             padding-left: 15px;
-//         }
-//         .details-table {
-//             width: 100%;
-//             border-collapse: collapse;
-//             margin: 15px 0;
-//         }
-//         .details-table th, .details-table td {
-//             border: 1px solid #ddd;
-//             padding: 8px;
-//             text-align: left;
-//         }
-//         .details-table th {
-//             background-color: #f8f9fa;
-//             color: #333;
-//         }
-//         .footer {
-//         background-color: #f4f4f4;
-//         padding: 12px 24px;
-//         font-size: 12px;
-//         text-align: center;
-//         color: #777;
-//         }
-//         .button {
-//             display: inline-block;
-//             padding: 10px 20px;
-//             background-color: #007bff;
-//             color: #ffffff;
-//             text-decoration: none;
-//             border-radius: 5px;
-//             margin-top: 15px;
-//         }
-//     </style>
-// </head>
-// <body>
-//     <div class="container">
-//         <div class="header">
-//             <h1>Attendance Correction Request</h1>
-//         </div>
-//         <div class="content status-${status}">
-//             <h2>REQUEST #${id} - ${status.toUpperCase()}</h2>
-//             <p>Dear ${fullname.toUpperCase()},</p>
-//             <p>Your attendance correction request for <strong>${attendance_date}</strong> has been ${status.toLowerCase()}. Below are the details of your request:</p>
-//             <table class="details-table">
-//                 <tr>
-//                     <th>Request Type</th>
-//                     <td>${request_type}</td>
-//                 </tr>
-//                 <tr>
-//                     <th>Reason</th>
-//                     <td>${reason}</td>
-//                 </tr>
-//                 <tr>
-//                     <th>Requested Check-In</th>
-//                     <td>${requested_check_in || "N/A"}</td>
-//                 </tr>
-//                 <tr>
-//                     <th>Requested Check-Out</th>
-//                     <td>${requested_check_out || "N/A"}</td>
-//                 </tr>
-//                 <tr>
-//                     <th>Original Check-In</th>
-//                     <td>${original_check_in || "N/A"}</td>
-//                 </tr>
-//                 <tr>
-//                     <th>Original Check-Out</th>
-//                     <td>${original_check_out || "N/A"}</td>
-//                 </tr>
-//                 <tr>
-//                     <th>Status</th>
-//                     <td>${status}</td>
-//                 </tr>
-//             </table>
-//             <p><strong>Submitted On:</strong> ${created_at}</p>
-//         </div>
-//        <div class="footer">
-//       &copy; ${year} Orio. All rights reserved.
-//     </div>
-//     </div>
-// </body>
-// </html>`;

@@ -7,188 +7,173 @@ export const getLeaveTemplate = ({
   start_date,
   end_date,
   total_days,
-  remarks,
-  approved_by_name,
-  approved_on,
+  remarks = "",
+  approved_by_name = "",
+  approved_on = "",
   id,
+  year = "2025",
 }: {
-  status: string;
-  applied_on: string;
+  status: "pending" | "approved" | "rejected";
+  applied_on: string; // YYYY-MM-DD
   name: string;
   leave_type_name: string;
   reason: string;
-  start_date: string;
-  end_date: string;
-  total_days: string;
-  remarks: string;
-  approved_on: string;
+  start_date: string; // YYYY-MM-DD
+  end_date: string; // YYYY-MM-DD
+  total_days: string | number;
+  remarks?: string;
+  approved_by_name?: string;
+  approved_on?: string; // YYYY-MM-DD
   id: string;
-  approved_by_name: string;
-}) => `<!DOCTYPE html>
+  year?: string;
+}) => {
+  const capitalize = (str: string): string =>
+    str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "";
+
+  // YYYY-MM-DD → DD Month YYYY (e.g., 2025-12-26 → 26 December 2025)
+  const formatDate = (dateStr: string | undefined): string => {
+    if (!dateStr) return "Not provided";
+
+    const months = [
+      "January",
+      "February",
+      "March",
+      "April",
+      "May",
+      "June",
+      "July",
+      "August",
+      "September",
+      "October",
+      "November",
+      "December",
+    ];
+
+    const [year, month, day] = dateStr.split("-");
+    if (!year || !month || !day) return dateStr; // fallback
+
+    const monthName = months[parseInt(month) - 1];
+    return `${parseInt(day)}-${monthName}-${year}`;
+  };
+
+  const statusText = capitalize(status);
+  const statusColor =
+    status === "approved"
+      ? "#2e7d32"
+      : status === "rejected"
+      ? "#d93025"
+      : "#e67e22"; // pending
+
+  const safe = (str: string | undefined): string =>
+    str ? str.replace(/\n/g, "<br>") : "Not provided";
+
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leave Request Notification</title>
-    <style>
-        body {
-            font-family: 'Helvetica Neue', Arial, sans-serif;
-            line-height: 1.6;
-            color: #333333;
-            background-color: #f5f6f5;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 640px;
-            margin: 30px auto;
-            background-color: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-        }
-        .header {
-            background-color: #0052cc;
-            color: #ffffff;
-            padding: 20px;
-            text-align: center;
-            border-bottom: 4px solid #003087;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 24px;
-            font-weight: 600;
-        }
-        .content {
-            padding: 30px;
-        }
-        .content h2 {
-            font-size: 20px;
-            font-weight: 600;
-            margin: 0 0 15px;
-        }
-        .content p {
-            margin: 0 0 10px;
-            font-size: 14px;
-        }
-        .details-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            font-size: 14px;
-        }
-        .details-table th, .details-table td {
-            border: 1px solid #e0e0e0;
-            padding: 12px;
-            text-align: left;
-        }
-        .details-table th {
-            background-color: #f8f9fa;
-            color: #333333;
-            font-weight: 600;
-        }
-        .details-table td {
-            color: #555555;
-        }
-        .footer {
-            text-align: center;
-            padding: 20px;
-            font-size: 12px;
-            color: #666666;
-            background-color: #f8f9fa;
-            border-top: 1px solid #e0e0e0;
-        }
-        .button {
-            display: inline-block;
-            padding: 12px 24px;
-            background-color: #0052cc;
-            color: #ffffff;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 14px;
-            font-weight: 500;
-            margin-top: 20px;
-            transition: background-color 0.3s ease;
-        }
-        .button:hover {
-            background-color: #003087;
-        }
-        .status-approved .content {
-            border-left: 6px solid #28a745;
-        }
-        .status-approved h2 {
-            color: #28a745;
-        }
-        .status-approved .button {
-            background-color: #28a745;
-        }
-        .status-approved .button:hover {
-            background-color: #218838;
-        }
-        .status-rejected .content {
-            border-left: 6px solid #dc3545;
-        }
-        .status-rejected h2 {
-            color: #dc3545;
-        }
-        .status-rejected .button {
-            background-color: #dc3545;
-        }
-        .status-rejected .button:hover {
-            background-color: #c82333;
-        }
-        .status-pending .content {
-            border-left: 6px solid #0052cc;
-        }
-        .status-pending h2 {
-            color: #0052cc;
-        }
-        .status-pending .button {
-            background-color: #0052cc;
-        }
-        .status-pending .button:hover {
-            background-color: #003087;
-        }
-    </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Leave Request ${statusText}</title>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>Leave Request Notification</h1>
-        </div>
-        <div class="content status-${status}">
-            <p>A leave request for Employee Name <strong>${name.toUpperCase()}</strong> has been  ${status}  <strong>${applied_on}</strong>. Please find the details below:</p>
-            <table class="details-table">
+
+<body style="margin:0; padding:0; background-color:#ecf0f1; font-family: Arial, sans-serif; color:#333;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ecf0f1">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" border="0" bgcolor="#ffffff" style="border-collapse: collapse;">
+          
+          <!-- Header -->
+          <tr>
+            <td bgcolor="#0074fc" align="center" style="padding: 24px;">
+              <img src="https://getorio.com/images/png/logo-white.png" width="130" alt="Orio Logo" style="display:block; border:0; margin-bottom: 13px;" />
+              <h2 style="margin: 0; color:#fff; font-size:22px;">Leave Request - ${statusText}</h2>
+            </td>
+          </tr>
+
+          <!-- Content -->
+          <tr>
+            <td style="padding: 24px; font-size:15px; line-height:1.6;">
+              <p style="margin:0 0 12px 0;">Dear <strong>${name}</strong>,</p>
+
+              <p style="margin:0 0 12px 0;">
+                Your leave request has been 
+                <span style="color:${statusColor}; font-weight:bold;">${statusText}</span>.
+              </p>
+
+              <!-- Details Box -->
+              <table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#f9fafb" style="margin:16px 0;">
                 <tr>
-                    <th>Leave Type</th>
-                    <td>${leave_type_name}</td>
+                  <td style="padding:16px;">
+                    <table width="100%" cellpadding="8" cellspacing="0" border="0">
+                      <tr>
+                        <td style="font-weight:bold; width:180px;">Leave Type</td>
+                        <td>${leave_type_name}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">Reason</td>
+                        <td>${safe(reason)}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">Start Date</td>
+                        <td>${formatDate(start_date)}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">End Date</td>
+                        <td>${formatDate(end_date)}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">Total Days</td>
+                        <td>${total_days}</td>
+                      </tr>
+                      ${
+                        remarks
+                          ? `
+                      <tr>
+                        <td style="font-weight:bold;">Remarks</td>
+                        <td>${safe(remarks)}</td>
+                      </tr>`
+                          : ""
+                      }
+                      ${
+                        approved_by_name && approved_on
+                          ? `
+                      <tr>
+                        <td style="font-weight:bold;">${statusText} By</td>
+                        <td>${approved_by_name}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">${statusText} On</td>
+                        <td>${formatDate(approved_on)}</td>
+                      </tr>`
+                          : ""
+                      }
+                      <tr>
+                        <td style="font-weight:bold;">Applied On</td>
+                        <td>${formatDate(applied_on)}</td>
+                      </tr>
+                      <tr>
+                        <td style="font-weight:bold;">Status</td>
+                        <td style="color:${statusColor}; font-weight:bold;">${statusText}</td>
+                      </tr>
+                    </table>
+                  </td>
                 </tr>
-                <tr>
-                    <th>Reason</th>
-                    <td>${reason || "Not provided"}</td>
-                </tr>
-                <tr>
-                    <th>Start Date</th>
-                    <td>${start_date}</td>
-                </tr>
-                <tr>
-                    <th>End Date</th>
-                    <td>${end_date}</td>
-                </tr>
-                <tr>
-                    <th>Total Days</th>
-                    <td>${total_days}</td>
-                </tr>
-                <tr>
-                    <th>Status</th>
-                    <td>${status}</td>
-                </tr>
-            </table>
-            <p><strong>Applied On:</strong> ${applied_on}</p>
-        </div>
-       <div class="footer">
-      &copy; ${new Date().getFullYear()} Orio. All rights reserved.
-    </div>
-    </div>
+              </table>
+            </td>
+          </tr>
+
+          <!-- Footer -->
+          <tr>
+            <td bgcolor="#0074fc" align="center" style="padding:20px; color:#ffffff; font-size:12px;">
+              <p style="margin:4px 0;">D-63/1, First Floor Block 4 Gulshan-e-Iqbal</p>
+              <p style="margin:4px 0;">Karachi, Sindh Pakistan</p>
+              <p style="margin:4px 0;">&copy; ${year} Orio. All rights reserved.</p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
 </body>
 </html>`;
+};

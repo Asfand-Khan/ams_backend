@@ -99,7 +99,7 @@ export const createEmployeeHandler = async (
     if (newEmployee) {
       await sendEmail({
         to: newEmployee.email,
-        subject: "Employee Registration",
+        subject: "Orio Connect - Employee Registration",
         html: getSignUpTemplate(
           newEmployee.full_name,
           newEmployee.username,

@@ -10,6 +10,7 @@ import {
   allLeaves,
   calculateDays,
   createLeave,
+  getEmployeeLeaveDetails,
   leaveRejectApprove,
   leaveSummary,
   singleLeave,
@@ -166,6 +167,29 @@ export const approveRejectLeaveHandler = async (
     });
   } catch (error) {
     const err = handleAppError(error); 
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+export const getEmployeeLeaveDetailsHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = leaveSummarySchema.parse(req.body);
+
+    const summary = await getEmployeeLeaveDetails(parsedData.employee_id);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Leave summary fetched successfully",
+      payload: summary,
+    });
+  } catch (error) {
+    const err = handleAppError(error);
     return res.status(err.status).json({
       status: 0,
       message: err.message,
