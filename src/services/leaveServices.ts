@@ -497,50 +497,50 @@ export const getEmployeeLeaveDetails = async (employeeId?: number) => {
         e.id AS employee_id,
         e.full_name,
 
-        COALESCE(
-            GROUP_CONCAT(
-                CASE 
-                    WHEN lt.name = 'Annual' 
-                    THEN CONCAT(
-                        DATE_FORMAT(l.start_date, '%Y-%m-%d'), ' to ', 
-                        DATE_FORMAT(l.end_date, '%Y-%m-%d'), 
-                        ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
-                    )
-                END
-                ORDER BY l.start_date
-                SEPARATOR '\n'
-            ), 'No Annual Leave'
-        ) AS annual_leaves,
+         COALESCE(
+        GROUP_CONCAT(
+            CASE 
+                WHEN lt.name = 'Annual' 
+                THEN CONCAT(
+                    UPPER(DATE_FORMAT(l.start_date, '%d-%b-%Y')), ' to ', 
+                    UPPER(DATE_FORMAT(l.end_date, '%d-%b-%Y')), 
+                    ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
+                )
+            END
+            ORDER BY l.start_date
+            SEPARATOR '\n'
+        ), 'No Annual Leave'
+    ) AS annual_leaves,
 
-        COALESCE(
-            GROUP_CONCAT(
-                CASE 
-                    WHEN lt.name = 'Sick' 
-                    THEN CONCAT(
-                        DATE_FORMAT(l.start_date, '%Y-%m-%d'), ' to ', 
-                        DATE_FORMAT(l.end_date, '%Y-%m-%d'), 
-                        ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
-                    )
-                END
-                ORDER BY l.start_date
-                SEPARATOR '\n'
-            ), 'No Sick Leave'
-        ) AS sick_leaves,
+    COALESCE(
+        GROUP_CONCAT(
+            CASE 
+                WHEN lt.name = 'Sick' 
+                THEN CONCAT(
+                    UPPER(DATE_FORMAT(l.start_date, '%d-%b-%Y')), ' to ', 
+                    UPPER(DATE_FORMAT(l.end_date, '%d-%b-%Y')), 
+                    ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
+                )
+            END
+            ORDER BY l.start_date
+            SEPARATOR '\n'
+        ), 'No Sick Leave'
+    ) AS sick_leaves,
 
-        COALESCE(
-            GROUP_CONCAT(
-                CASE 
-                    WHEN lt.name = 'Casual' 
-                    THEN CONCAT(
-                        DATE_FORMAT(l.start_date, '%Y-%m-%d'), ' to ', 
-                        DATE_FORMAT(l.end_date, '%Y-%m-%d'), 
-                        ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
-                    )
-                END
-                ORDER BY l.start_date
-                SEPARATOR '\n'
-            ), 'No Casual Leave'
-        ) AS casual_leaves
+    COALESCE(
+        GROUP_CONCAT(
+            CASE 
+                WHEN lt.name = 'Casual' 
+                THEN CONCAT(
+                    UPPER(DATE_FORMAT(l.start_date, '%d-%b-%Y')), ' to ', 
+                    UPPER(DATE_FORMAT(l.end_date, '%d-%b-%Y')), 
+                    ' (', DATEDIFF(l.end_date, l.start_date)+1, ' days)'
+                )
+            END
+            ORDER BY l.start_date
+            SEPARATOR '\n'
+        ), 'No Casual Leave'
+    ) AS casual_leaves
 
     FROM \`Leave\` l
     JOIN Employee e ON l.employee_id = e.id
