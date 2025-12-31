@@ -199,6 +199,52 @@ export const createNotification = async (data: CreateNotification) => {
 
   return;
 };
+export const createCombinedNotification = async (data: CreateNotification) => {
+  const { title, message, type, priority, user_id } = data;
+  const userIds = Array.isArray(user_id) ? user_id : user_id ? [user_id] : [];
+
+  if (userIds.length === 0) return;
+  const notificationArray = userIds.map((id) => ({
+    title,
+    message,
+    type,
+    priority,
+    user_id: id,
+    broadcast: false,
+  }));
+
+  await prisma.notification.createMany({ data: notificationArray });
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { email: true },
+  });
+
+  const allEmails = users.map((u) => u.email);
+
+  await sendEmail({
+    to: allEmails,
+    cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
+    subject: `Orio Connect - ${title}`,
+    html: getNotificationTemplate(
+      "Orio Team",
+      title,
+      type,
+      message,
+      priority,
+      format(new Date(), "dd-MMMM-yyyy"),
+      new Date().getFullYear().toString()
+    ),
+  });
+
+  const tokens = await prisma.fCMToken.findMany({
+    select: { token: true },
+    where: { user_id: { in: userIds }, is_active: true },
+  });
+
+  await sendPushNotification(tokens.map((t) => t.token), title, message);
+
+  return;
+};
 
 export const allNotifications = async (data: AllNotification) => {
   let notifications = [];

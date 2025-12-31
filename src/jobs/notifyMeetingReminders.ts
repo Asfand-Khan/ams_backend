@@ -1,9 +1,9 @@
 import { DayStatus } from "@prisma/client";
 import prisma from "../config/db";
-import { createNotification } from "../services/notificationServices";
+import { createCombinedNotification } from "../services/notificationServices";
 
 interface MeetingAttendeeNotification {
-  user_id: number;
+  user_ids: string;
   title: string;
   message: string;
 }
@@ -12,16 +12,18 @@ export async function notifyMeetingReminders() {
   console.log("📢 Nightly meeting reminders work started.");
 
   try {
-    const attendees = (await prisma.$queryRaw<MeetingAttendeeNotification[]>`
-      SELECT DISTINCT
-        u.id AS user_id,
+    const meetings = await prisma.$queryRaw<MeetingAttendeeNotification[]>`
+      SELECT 
+        GROUP_CONCAT(DISTINCT u.id) AS user_ids,
         CONCAT('Reminder: ', UPPER(LEFT(m.recurrence_type, 1)), LOWER(SUBSTRING(m.recurrence_type, 2)), ' Meeting Tomorrow - ', m.title) AS title,
-        CONCAT(
+           CONCAT(
           'Reminder: You have a ', UPPER(LEFT(m.recurrence_type, 1)), LOWER(SUBSTRING(m.recurrence_type, 2)), ' meeting tomorrow: ', m.title,
-          ' on ', mi.instance_date, ' from ', mi.start_time, ' to ', mi.end_time, '. ',
+          ' on ', DATE_FORMAT(mi.instance_date, '%d-%b-%Y'),
+        ' from ', DATE_FORMAT(STR_TO_DATE(mi.start_time, '%H:%i:%s'), '%h:%i %p'),
+              ' to ', DATE_FORMAT(STR_TO_DATE(mi.end_time, '%H:%i:%s'), '%h:%i %p'), '. ',
           'Location: ', m.location_type, ' - ', m.location_details, '. ',
           'Host: ', eh.full_name, '. Please ensure you are prepared.'
-        ) AS message
+        )AS message
       FROM MeetingAttendee ma
       JOIN Meeting m ON ma.meeting_id = m.id
       JOIN MeetingInstance mi ON mi.meeting_id = m.id
@@ -32,37 +34,34 @@ export async function notifyMeetingReminders() {
         mi.instance_date = DATE_ADD(CURDATE(), INTERVAL 1 DAY)
         AND mi.status = 'scheduled'
         AND ma.is_active = 1
-        AND u.is_active = 1;
-    `);
+        AND u.is_active = 1
+      GROUP BY m.id, title, message;
+    `;
 
-    if (!attendees.length) {
+    if (!meetings.length) {
       console.log("✅ No meeting reminders to send.");
       return;
     }
+    for (const meeting of meetings) {
+      const userIds = meeting.user_ids.split(",").map(Number);
 
-    const results = await Promise.allSettled(
-      attendees.map(attendee =>
-        createNotification({
-          user_id: attendee.user_id,
-          title: attendee.title,
-          message: attendee.message,
-          type: "alert",
-          priority: "medium",
-        })
-      )
-    );
+      await createCombinedNotification({
+        user_id: userIds,
+        title: meeting.title,
+        message: meeting.message,
+        type: "alert",
+        priority: "medium",
+      });
 
-    results.forEach((result, idx) => {
-      if (result.status === "fulfilled") {
-        console.log(`✅ Notification sent for user_id: ${attendees[idx].user_id}`);
-      } else {
-        console.error(`❌ Failed to send notification for user_id: ${attendees[idx].user_id}`, result.reason);
-      }
-    });
+      console.log(
+        `✅ Combined notification sent for meeting "${
+          meeting.title
+        }" to users: ${userIds.join(", ")}`
+      );
+    }
 
     console.log("📢 Nightly meeting reminders work ended.");
   } catch (error) {
     console.error("❌ Nightly meeting reminders failed:", error);
   }
 }
-
