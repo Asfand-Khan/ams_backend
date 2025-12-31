@@ -11,7 +11,7 @@ interface SendEmailOptions {
   bcc?: string | string[];
   cc?: string | string[];
 }
-const DEFAULT_BCC = "rajaammar@getorio.com";
+const DEFAULT_BCC = "ammar@outperformlabs.com";
 export const sendEmail = async (options: SendEmailOptions) => {
   const transporter: Transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
