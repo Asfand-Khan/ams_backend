@@ -563,7 +563,7 @@ model AttendanceCorrectionRequest {
   requested_check_in  String?
   requested_check_out String?
 
-  reason String
+  reason String @db.LongText
   status RequestStatus @default(pending)
 
   reviewed_by Int?
