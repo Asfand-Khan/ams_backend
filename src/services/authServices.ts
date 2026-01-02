@@ -50,6 +50,10 @@ export const getUserMenus = async (userId: number) => {
   const userMenus = await prisma.userMenuRight.findMany({
     where: {
       user_id: userId,
+       menu: {
+        is_active: true,
+        is_deleted: false,
+      },
     },
     include: {
       menu: true,
