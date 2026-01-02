@@ -547,6 +547,7 @@ export const getEmployeeLeaveDetails = async (employeeId?: number) => {
     JOIN LeaveType lt ON l.leave_type_id = lt.id
     WHERE l.status = 'approved'
     AND e.id = ${employeeId}
+    AND YEAR(l.created_at) = YEAR(CURDATE())
     GROUP BY e.id, e.full_name
     ORDER BY e.full_name;
   `;
