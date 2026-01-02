@@ -237,7 +237,7 @@ export const leaveSummary = async (employee_id: number) => {
         JOIN LeaveType lt ON elq.leave_type_id = lt.id 
       WHERE
         elq.employee_id = ${employee_id} 
-        AND elq.YEAR = 2025
+        AND elq.YEAR = YEAR (CURDATE()) 
         AND elq.is_active = 1 
         AND elq.is_deleted = 0;
     `;
