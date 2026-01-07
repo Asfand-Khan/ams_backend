@@ -1,7 +1,7 @@
-import { syncManualLogs } from "./src/services/manualLogs";
+import {testZkteco } from "./src/services/manualLogs";
 
 async function main() {
-  await syncManualLogs({ startDate: "2026-01-06", endDate: "2026-01-06" });
+  await testZkteco();
 }
 
-main().then(() => console.log("Test completed"));
+main().then(() => console.log("Users fetch complete!"));
