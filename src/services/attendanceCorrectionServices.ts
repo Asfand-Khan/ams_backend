@@ -164,7 +164,7 @@ export const attendanceCorrectionListing = async (
       employee: {
         select: {
           full_name: true,
-          profile_picture : true,
+          profile_picture : true
         },
       },
       reviewer: {
