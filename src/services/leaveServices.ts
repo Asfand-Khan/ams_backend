@@ -304,6 +304,7 @@ export const leaveRejectApprove = async (
   } else {
     updatedLeave = await prisma.$transaction(
       async (tx) => {
+        const currentYear = dayjs().tz("Asia/Karachi").year();
         const start = dayjs(leave.start_date).tz("Asia/Karachi").startOf("day");
         const end = dayjs(leave.end_date).tz("Asia/Karachi").startOf("day");
         const leaveDays = end.diff(start, "day") + 1;
@@ -333,6 +334,7 @@ export const leaveRejectApprove = async (
           where: {
             employee_id: data.employee_id,
             leave_type_id: leave.leave_type_id,
+            year: currentYear,
           },
         });
 

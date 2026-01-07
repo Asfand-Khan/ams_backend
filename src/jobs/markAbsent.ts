@@ -29,7 +29,7 @@ export async function markAbsent() {
     LEFT JOIN TeamMember tm ON e.id = tm.employee_id
     WHERE 
      	a.id IS NULL
-        AND e.id != 1
+        AND e.department_id != 1
         AND DAYOFWEEK(CURRENT_DATE) != 1
         AND (
         DAYOFWEEK(CURRENT_DATE) = 7 AND tm.team_id IN (4, 5)

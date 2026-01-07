@@ -12,7 +12,8 @@ import {
 import { markAbsent } from "./markAbsent";
 import { markWeekend } from "./markWeekend";
 import { notifyMeetingReminders } from "./notifyMeetingReminders";
-import { notifyUpcomingMeetings } from "./notifyUpcomingMeetings";
+import { notifyBirthday } from "./notifyBirthday";
+import { notifyWorkAnniversary } from "./notifyWorkAnniversary";
 
 async function notifyCheckIN09AMHandler() {
   console.log("Notify checkin 09AM work started.");
@@ -66,11 +67,17 @@ async function meetingReminderHandler() {
   await notifyMeetingReminders();
   console.log("notifyMeetingReminders work ended.");
 }
-async function upcomingMeetingReminderHandler() {
-  console.log("📢 Upcoming meeting reminders work started.");
-  await notifyUpcomingMeetings();
-  console.log("✅ Upcoming meeting reminders work ended.");
+async function workAnniversaryHandler() {
+  console.log("Work anniversary notification cron started.");
+  await notifyWorkAnniversary();
+  console.log("Work anniversary notification cron ended.");
 }
+async function birthdayHandler() {
+  console.log("Birthday notification cron started.");
+  await notifyBirthday();
+  console.log("Birthday notification cron ended.");
+}
+
 // async function sendEmail() {
 //   console.log("Details work started.");
 //   await sendDetails();
@@ -147,7 +154,7 @@ export default function initializeCronJobs() {
 
     // Mark Weekend
     const markWeekendSchedule = cron.schedule(
-      "30 23 * * *",
+      "30 23 * * 6,0",
       () => {
         markWeekendHandler();
       },
@@ -159,21 +166,29 @@ export default function initializeCronJobs() {
     const meetingReminder = cron.schedule(
       "00 18 * * *",
       () => {
-        notifyMeetingReminders();
+        meetingReminderHandler();
       },
       { timezone: "Asia/Karachi" }
     );
     meetingReminder.start();
 
-    // Hourly Upcoming Meeting Reminders
-    const upcomingMeetingReminderSchedule = cron.schedule(
-      "0 * * * *",
+    const workAnniversary = cron.schedule(
+      "00 11 * * *",
       () => {
-        upcomingMeetingReminderHandler();
+        workAnniversaryHandler();
       },
       { timezone: "Asia/Karachi" }
     );
-    upcomingMeetingReminderSchedule.start();
+    workAnniversary.start();
+
+    const birthday = cron.schedule(
+      "00 11 * * *",
+      () => {
+        birthdayHandler();
+      },
+      { timezone: "Asia/Karachi" }
+    );
+    birthday.start();
   } catch (err: any) {
     console.error("❌ Cron job initialization failed:", err.message);
   }
