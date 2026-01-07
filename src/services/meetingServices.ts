@@ -11,7 +11,86 @@ import {
   MeetingList,
   MeetingMinute,
   UpdateMeeting,
+  UpdateMeetingInstance,
 } from "../validations/meetingValidations";
+
+export const updateMeetingInstance = async (
+  id: number,
+  data: UpdateMeetingInstance
+) => {
+  const existingInstance = await prisma.meetingInstance.findUnique({
+    where: { id: id },
+  });
+
+  if (!existingInstance) {
+    throw new Error("Meeting instance not found");
+  }
+
+  const updatedInstance = await prisma.$transaction(async (tx) => {
+    const instance = await tx.meetingInstance.update({
+      where: { id: id },
+      data: {
+        ...(data.instance_date && { instance_date: data.instance_date }),
+        ...(data.start_time && { start_time: data.start_time }),
+        ...(data.end_time && { end_time: data.end_time }),
+      },
+    });
+
+    if (data.attendees) {
+      const existingAttendees = await tx.meetingAttendee.findMany({
+        where: {
+          meeting_instance_id: id,
+          meeting_id: existingInstance.meeting_id,
+        },
+        select: {
+          employee_id: true,
+        },
+      });
+
+      const existingAttendeeIds = existingAttendees.map((att) =>
+        Number(att.employee_id)
+      );
+      const newAttendeeIds = data.attendees;
+
+      const toRemove = existingAttendeeIds.filter(
+        (id) => !newAttendeeIds.includes(id)
+      );
+
+      const toAdd = newAttendeeIds.filter(
+        (id) => !existingAttendeeIds.includes(id)
+      );
+
+      if (toRemove.length > 0) {
+        await tx.meetingAttendee.updateMany({
+          where: {
+            meeting_instance_id: id,
+            employee_id: { in: toRemove },
+          },
+          data: {
+            is_deleted: true,
+            is_active: false,
+          },
+        });
+      }
+
+      if (toAdd.length > 0) {
+        const meetingId = existingInstance.meeting_id;
+
+        await tx.meetingAttendee.createMany({
+          data: toAdd.map((empId) => ({
+            meeting_id: meetingId,
+            meeting_instance_id: id,
+            employee_id: empId,
+          })),
+        });
+      }
+    }
+
+    return instance;
+  });
+
+  return updatedInstance;
+};
 
 export const getMeetingById = async (id: number) => {
   const meeting = await prisma.meeting.findUnique({

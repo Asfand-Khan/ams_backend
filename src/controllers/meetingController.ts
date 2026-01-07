@@ -8,6 +8,7 @@ import {
   meetingMinuteSchema,
   meetingSchema,
   updateMeetingSchema,
+  updateMeetingInstanceSchema,
 } from "../validations/meetingValidations";
 import {
   attendMeeting,
@@ -19,8 +20,39 @@ import {
   meetingMinute,
   toggleMeetingInstanceStatus,
   updateMeeting,
+  updateMeetingInstance,
 } from "../services/meetingServices";
 import { AuthRequest } from "../types/types";
+
+// Module --> Meeting
+// Method --> PUT (Protected)
+// Endpoint --> /api/v1/meeting/instances
+// Description --> Update meeting instance details
+export const updateMeetingInstanceHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const parsedData = updateMeetingInstanceSchema.parse(req.body);
+    const updatedInstance = await updateMeetingInstance(
+      parsedData.meeting_instance_id,
+      parsedData
+    );
+
+    return res.status(200).json({
+      status: 1,
+      message: "Meeting Instance updated successfully",
+      payload: [updatedInstance],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
 
 // Module --> Meeting
 // Method --> GET (Protected)

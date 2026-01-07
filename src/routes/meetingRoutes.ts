@@ -9,6 +9,7 @@ import {
   meetingListHandler,
   meetingMinutesHandler,
   updateMeetingHandler,
+  updateMeetingInstanceHandler,
 } from "../controllers/meetingController";
 import { authenticate } from "../middlewares/authMiddleware";
 
@@ -21,6 +22,7 @@ router.post("/", createMeetingHandler);
 router.post("/attend", attendMeetingHandler);
 // router.post below is "instances"
 router.post("/instances", meetingInstanceListHandler);
+router.put("/instances", authenticate, updateMeetingInstanceHandler);
 router.post("/minutes", authenticate, meetingMinutesHandler);
 router.post("/instances/status", meetingInstanceStatusHandler);
 

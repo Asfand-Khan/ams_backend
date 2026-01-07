@@ -201,6 +201,41 @@ export const updateMeetingSchema = z.object({
     .optional(),
 });
 
+export const updateMeetingInstanceSchema = z.object({
+  meeting_instance_id: z
+    .number()
+    .int({ message: "Meeting Instance ID must be an integer." })
+    .positive({ message: "Meeting Instance ID must be a positive number." }),
+  instance_date: z
+    .string()
+    .regex(dateRegex, "Instance date must be in 'YYYY-MM-DD' format")
+    .optional(),
+
+  start_time: z
+    .string()
+    .regex(timeRegex, "Start time must be in 'HH:mm:ss' 24-hour format")
+    .optional(),
+
+  end_time: z
+    .string()
+    .regex(timeRegex, "End time must be in 'HH:mm:ss' 24-hour format")
+    .optional(),
+
+  attendees: z
+    .array(
+      z
+        .number()
+        .int({ message: "Attendees must be integers." })
+        .positive({ message: "Attendees must be positive integers." }),
+      {
+        errorMap: () => ({
+          message: "Attendees must be an array of integers.",
+        }),
+      }
+    )
+    .optional(),
+});
+
 export type Meeting = z.infer<typeof meetingSchema>;
 export type AttendMeeting = z.infer<typeof attendMeetingSchema>;
 export type MeetingMinute = z.infer<typeof meetingMinuteSchema>;
@@ -208,3 +243,4 @@ export type MeetingList = z.infer<typeof meetingListSchema>;
 export type MeetingInstanceList = z.infer<typeof meetingInstanceListSchema>;
 export type MeetingInstanceStatus = z.infer<typeof meetingInstanceStatusSchema>;
 export type UpdateMeeting = z.infer<typeof updateMeetingSchema>;
+export type UpdateMeetingInstance = z.infer<typeof updateMeetingInstanceSchema>;
