@@ -153,9 +153,58 @@ export const meetingInstanceStatusSchema = z.object({
     .positive({ message: "Meeting Instance ID must be a positive number." }),
 });
 
+export const updateMeetingSchema = z.object({
+  title: z
+    .string()
+    .min(3, { message: "Title must be at least 3 characters long." })
+    .max(100, { message: "Title cannot exceed 100 characters." })
+    .describe("Title of the meeting")
+    .optional(),
+
+  host_id: z
+    .number()
+    .int({ message: "Host ID must be an integer." })
+    .positive({ message: "Host ID must be a positive number." })
+    .optional(),
+
+  location_type: z
+    .enum(["physical", "online"], {
+      errorMap: () => ({
+        message: "Location type must be either 'physical' or 'online'.",
+      }),
+    })
+    .optional(),
+
+  location_details: z
+    .string()
+    .min(5, { message: "Location details must be at least 5 characters." })
+    .describe("Physical room name/address or online meeting URL")
+    .optional(),
+
+  agenda: z
+    .string()
+    .max(5000, { message: "Agenda cannot exceed 5000 characters." })
+    .optional(),
+
+  attendees: z
+    .array(
+      z
+        .number()
+        .int({ message: "Attendees must be integers." })
+        .positive({ message: "Attendees must be positive integers." }),
+      {
+        errorMap: () => ({
+          message: "Attendees must be an array of integers.",
+        }),
+      }
+    )
+    .optional(),
+});
+
 export type Meeting = z.infer<typeof meetingSchema>;
 export type AttendMeeting = z.infer<typeof attendMeetingSchema>;
 export type MeetingMinute = z.infer<typeof meetingMinuteSchema>;
 export type MeetingList = z.infer<typeof meetingListSchema>;
 export type MeetingInstanceList = z.infer<typeof meetingInstanceListSchema>;
 export type MeetingInstanceStatus = z.infer<typeof meetingInstanceStatusSchema>;
+export type UpdateMeeting = z.infer<typeof updateMeetingSchema>;

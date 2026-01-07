@@ -7,17 +7,83 @@ import {
   meetingListSchema,
   meetingMinuteSchema,
   meetingSchema,
+  updateMeetingSchema,
 } from "../validations/meetingValidations";
 import {
   attendMeeting,
   createMeeting,
   dashboardMeetingList,
+  getMeetingById,
   meetingInstanceListById,
   meetingList,
   meetingMinute,
   toggleMeetingInstanceStatus,
+  updateMeeting,
 } from "../services/meetingServices";
 import { AuthRequest } from "../types/types";
+
+// Module --> Meeting
+// Method --> GET (Protected)
+// Endpoint --> /api/v1/meeting/:id
+// Description --> Fetch a single meeting details
+export const getMeetingByIdHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new Error("Meeting ID is required");
+    }
+
+    const meeting = await getMeetingById(Number(id));
+
+    return res.status(200).json({
+      status: 1,
+      message: "Meeting details fetched successfully",
+      payload: [meeting],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// Module --> Meeting
+// Method --> PUT (Protected)
+// Endpoint --> /api/v1/meeting/:id
+// Description --> Update meeting details
+export const updateMeetingHandler = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      throw new Error("Meeting ID is required");
+    }
+
+    const parsedData = updateMeetingSchema.parse(req.body);
+    const updatedMeeting = await updateMeeting(Number(id), parsedData);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Meeting updated successfully",
+      payload: [updatedMeeting],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
 
 // Module --> Meeting
 // Method --> GET (Protected)
@@ -206,8 +272,7 @@ export const meetingMinutesHandler = async (
   }
 };
 
-
-// Module --> Meeting 
+// Module --> Meeting
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/meeting/instance/status
 // Description --> Toggle meeting instance status

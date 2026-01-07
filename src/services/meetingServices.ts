@@ -10,7 +10,177 @@ import {
   MeetingInstanceStatus,
   MeetingList,
   MeetingMinute,
+  UpdateMeeting,
 } from "../validations/meetingValidations";
+
+export const getMeetingById = async (id: number) => {
+  const meeting = await prisma.meeting.findUnique({
+    where: {
+      id,
+      is_deleted: false,
+    },
+    include: {
+      meeting_host: {
+        select: {
+          id: true,
+          full_name: true,
+          email: true,
+        },
+      },
+      attendees: {
+        where: {
+          is_active: true,
+          is_deleted: false,
+        },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!meeting) {
+    throw new Error("Meeting not found");
+  }
+
+  return {
+    ...meeting,
+    id: Number(meeting.id),
+    host_id: Number(meeting.host_id),
+    created_at: meeting.created_at.toISOString(),
+    updated_at: meeting.updated_at.toISOString(),
+    attendees: meeting.attendees.map((att) => ({
+      id: Number(att.id),
+      employee_id: Number(att.employee_id),
+      full_name: att.employee.full_name,
+      email: att.employee.email,
+    })),
+  };
+};
+
+export const updateMeeting = async (id: number, data: UpdateMeeting) => {
+  const existingMeeting = await prisma.meeting.findUnique({
+    where: { id, is_deleted: false },
+  });
+
+  if (!existingMeeting) {
+    throw new Error("Meeting not found");
+  }
+
+  const updatedMeeting = await prisma.$transaction(async (tx) => {
+    const meeting = await tx.meeting.update({
+      where: { id },
+      data: {
+        title: data.title,
+        host_id: data.host_id,
+        location_type: data.location_type,
+        location_details: data.location_details,
+        agenda: data.agenda,
+      },
+    });
+
+    if (data.attendees) {
+      const existingAttendees = await tx.meetingAttendee.findMany({
+        where: { meeting_id: id },
+      });
+
+      const existingAttendeeIds = existingAttendees.map((att) =>
+        Number(att.employee_id)
+      );
+      const newAttendeeIds = data.attendees;
+
+      // Identify attendees to remove
+      const toRemove = existingAttendeeIds.filter(
+        (id) => !newAttendeeIds.includes(id)
+      );
+
+      // Identify attendees to add
+      const toAdd = newAttendeeIds.filter(
+        (id) => !existingAttendeeIds.includes(id)
+      );
+
+      // Remove attendees
+      if (toRemove.length > 0) {
+        await tx.meetingAttendee.updateMany({
+          where: {
+            meeting_id: id,
+            employee_id: { in: toRemove },
+          },
+          data: {
+            is_deleted: true,
+            is_active: false,
+          },
+        });
+
+        // Also remove them from future instances
+        const futureInstances = (await tx.$queryRawUnsafe(`
+          SELECT id FROM MeetingInstance WHERE meeting_id = ${id} AND DATE( instance_date ) >= DATE(NOW())
+        `)) as { id: number }[];
+        const futureInstanceIds = futureInstances.map((i) => i.id);
+
+        if (futureInstanceIds.length > 0) {
+          await tx.meetingAttendee.updateMany({
+            where: {
+              meeting_instance_id: { in: futureInstanceIds },
+              employee_id: { in: toRemove },
+            },
+            data: {
+              is_deleted: true,
+              is_active: false,
+            },
+          });
+        }
+      }
+
+      // Add new attendees
+      if (toAdd.length > 0) {
+        // Add to main meeting definition
+        await tx.meetingAttendee.createMany({
+          data: toAdd.map((employeeId) => ({
+            meeting_id: id,
+            employee_id: employeeId,
+          })),
+        });
+
+        // Add to future instances
+        const futureInstances = (await tx.$queryRawUnsafe(`
+          SELECT id FROM MeetingInstance WHERE meeting_id = ${id} AND DATE( instance_date ) >= DATE(NOW())
+        `)) as { id: number }[];
+        const futureInstanceIds = futureInstances.map((i) => i.id);
+
+        if (futureInstanceIds.length > 0) {
+          const instanceAttendees = futureInstanceIds.flatMap((instId) =>
+            toAdd.map((empId) => ({
+              meeting_id: id,
+              meeting_instance_id: instId,
+              employee_id: empId,
+            }))
+          );
+
+          await tx.meetingAttendee.createMany({
+            data: instanceAttendees,
+          });
+        }
+      }
+    }
+
+    return meeting;
+  });
+
+  return {
+    ...updatedMeeting,
+    id: Number(updatedMeeting.id),
+    host_id: Number(updatedMeeting.host_id),
+    created_at: updatedMeeting.created_at.toISOString(),
+    updated_at: updatedMeeting.updated_at.toISOString(),
+  };
+};
 
 export const dashboardMeetingList = async (user: any) => {
   const userRecord = await prisma.user.findFirst({
