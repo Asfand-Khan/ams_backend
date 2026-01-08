@@ -16,7 +16,8 @@ export const createHoliday = async (holiday: Holiday) => {
   return await prisma.$transaction(async (tx) => {
     const newHoliday = await tx.holiday.create({
       data: {
-        holiday_date: holiday.holiday_date,
+        start_date: holiday.start_date,
+        end_date: holiday.end_date,
         title: holiday.title,
         description: holiday.description ?? null,
       },
@@ -34,30 +35,40 @@ export const createHoliday = async (holiday: Holiday) => {
       return newHoliday;
     }
 
-    const attendanceRecords: Prisma.AttendanceCreateManyInput[] = employees.map((emp) => ({
-      employee_id: emp.id,
-      date: holiday.holiday_date,
-      day_status: "holiday",
-    }));
+    const start = new Date(holiday.start_date);
+    const end = new Date(holiday.end_date);
+    const attendanceRecords: Prisma.AttendanceCreateManyInput[] = [];
 
-    await tx.attendance.createMany({
-      data: attendanceRecords,
-      skipDuplicates: true,
-    });
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split("T")[0]; // YYYY-MM-DD
+
+      employees.forEach((emp) => {
+        attendanceRecords.push({
+          employee_id: emp.id,
+          date: dateStr,
+          day_status: "holiday",
+        });
+      });
+    }
+
+    if (attendanceRecords.length > 0) {
+      await tx.attendance.createMany({
+        data: attendanceRecords,
+        skipDuplicates: true,
+      });
+    }
 
     return newHoliday;
   });
 };
 
 export const updateHoliday = async (holiday: HolidayUpdate) => {
-  const data: any = {
-    holiday_date: new Date(holiday.holiday_date),
-    title: holiday.title,
-  };
+  const data: any = {};
 
-  if (holiday.description) {
-    data.description = holiday.description;
-  }
+  if (holiday.title) data.title = holiday.title;
+  if (holiday.start_date) data.start_date = holiday.start_date;
+  if (holiday.end_date) data.end_date = holiday.end_date;
+  if (holiday.description) data.description = holiday.description;
 
   const updatedHoliday = await prisma.holiday.update({
     where: {
@@ -65,6 +76,9 @@ export const updateHoliday = async (holiday: HolidayUpdate) => {
     },
     data,
   });
+
+  // TODO: Handle attendance update if dates changed. This might require deleting old attendance and creating new.
+
   return updatedHoliday;
 };
 
@@ -73,6 +87,7 @@ export const deleteHoliday = async (id: number) => {
     where: { id },
     data: { is_deleted: true },
   });
+  // TODO: Consider deleting/reverting attendance records associated with this holiday?
   return deletedHoliday;
 };
 
@@ -84,9 +99,11 @@ export const getHolidayById = async (id: number) => {
 };
 
 export const getHolidayByDate = async (date: string) => {
-  const holiday = await prisma.holiday.findUnique({
+  const holiday = await prisma.holiday.findFirst({
     where: {
-      holiday_date: date,
+      start_date: { lte: date },
+      end_date: { gte: date },
+      is_deleted: false,
     },
   });
   return holiday;

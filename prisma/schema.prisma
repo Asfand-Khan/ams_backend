@@ -438,15 +438,15 @@ model TeamMember {
 
 model Holiday {
   id           Int      @id @default(autoincrement())
-  holiday_date String   @unique
+  holiday_date String?
+  start_date   String
+  end_date     String
   title        String   @db.VarChar(100)
   description  String?  @db.Text
   is_active    Boolean  @default(true)
   is_deleted   Boolean  @default(false)
   created_at   DateTime @default(now())
   updated_at   DateTime @updatedAt
-
-  @@index([holiday_date], name: "idx_holiday_date")
 }
 
 model OfficeWifiNetwork {
@@ -563,7 +563,7 @@ model AttendanceCorrectionRequest {
   requested_check_in  String?
   requested_check_out String?
 
-  reason String @db.LongText
+  reason String        @db.LongText
   status RequestStatus @default(pending)
 
   reviewed_by Int?
@@ -595,7 +595,7 @@ model AssetComplaintRequest {
   category     ComplaintCategory
   asset_type   AssetType
 
-  reason             String           @db.LongText
+  reason             String          @db.LongText
   status             ComplaintStatus @default(pending)
   requested_at       DateTime        @default(now())
   reviewed_at        DateTime?
@@ -649,7 +649,7 @@ model FCMToken {
 model Meeting {
   id                    Int            @id @default(autoincrement())
   title                 String         @db.VarChar(100)
-  recurrence_rule       String        @db.VarChar(191)
+  recurrence_rule       String         @db.VarChar(191)
   recurrence_type       RecurrenceType @default(one_time)
   start_time            String
   end_time              String
