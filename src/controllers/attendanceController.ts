@@ -31,7 +31,6 @@ import { getCheckInStatus } from "../utils/getCheckInStatus";
 import { getWorkStatus } from "../utils/getWorkStatusAndHours";
 import { handleAppError } from "../utils/appErrorHandler";
 import { AuthRequest } from "../types/types";
-import { syncFingerprintLogs } from "../services/attendanceFingerprintService";
 
 // Module --> Attendance
 // Method --> GET (Protected)
@@ -544,20 +543,20 @@ export const getAttendanceSummaryV2Handler = async (
     });
   }
 };
-export const syncFingerprintHandler = async (req: Request, res: Response) => {
-  try {
-    const { startDate, endDate } = req.body;
-    const DEVICE_IP = process.env.FINGERPRINT_IP || "192.168.1.201";
+// export const syncFingerprintHandler = async (req: Request, res: Response) => {
+//   try {
+//     const { startDate, endDate } = req.body;
+//     const DEVICE_IP = process.env.FINGERPRINT_IP || "192.168.1.201";
 
-    await syncFingerprintLogs({
-      ip: DEVICE_IP,
-      startDate,
-      endDate
-    });
+//     await syncFingerprintLogs({
+//       ip: DEVICE_IP,
+//       startDate,
+//       endDate
+//     });
 
-    return res.status(200).json({ status: 1, message: "Fingerprint logs synced successfully." });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ status: 0, message: "Sync failed", payload: [] });
-  }
-};
+//     return res.status(200).json({ status: 1, message: "Fingerprint logs synced successfully." });
+//   } catch (err) {
+//     console.error(err);
+//     return res.status(500).json({ status: 0, message: "Sync failed", payload: [] });
+//   }
+// };

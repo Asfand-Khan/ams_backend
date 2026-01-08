@@ -1,89 +1,58 @@
-import prisma from "../config/db";
-import { getEmployeeShift, addAttendance, updateAttendance } from "./attendanceServices";
-import { getCheckInStatus } from "../utils/getCheckInStatus";
-import { getWorkStatus } from "../utils/getWorkStatusAndHours";
+const Zkteco = require("zkteco-js");
 
-interface DeviceLog {
-  employeeId: number;
-  recordTime: string; // full datetime
-}
+// Replace with your device details
+const DEVICE_IP = "192.168.18.80";
+const PORT = 4370;
+const INPORT = 5200;
+const TIMEOUT = 5000;
 
-interface SyncOptions {
-  startDate: string; // "YYYY-MM-DD"
-  endDate: string;   // "YYYY-MM-DD"
-}
+export async function testZkteco() {
+  const device = new Zkteco(DEVICE_IP, PORT, INPORT, TIMEOUT);
 
-export const syncManualLogs = async (options: SyncOptions) => {
-  const { startDate, endDate } = options;
+  try {
+    await device.createSocket();
 
-  const formatDateTime = (date: string, time: string) => `${date} ${time}`;
+    // Get users
+    const users = await device.getUsers();
+    console.log("Users:", users);
 
-  const logs: DeviceLog[] = [
-    { employeeId: 1, recordTime: formatDateTime(startDate, "08:55:00") },
-    { employeeId: 1, recordTime: formatDateTime(startDate, "17:45:00") },
-    { employeeId: 1, recordTime: formatDateTime(endDate, "09:10:00") },
-    { employeeId: 1, recordTime: formatDateTime(endDate, "17:15:00") },
-  ];
+    // Add / Update a user
+    // await device.setUser(
+    //   44,            // uid
+    //   "44",          // userID
+    //   "Raja Ammar", // name
+    //   "",           // password
+    //   14,            // role
+    //   0             // cardno
+    // );
+    // console.log("User set successfully");
 
-  // Group logs per employee per day
-  const grouped: Record<string, DeviceLog[]> = {};
-  logs.forEach(log => {
-    const date = log.recordTime.split(" ")[0];
-    const key = `${log.employeeId}-${date}`;
-    if (!grouped[key]) grouped[key] = [];
-    grouped[key].push(log);
-  });
+    // Get attendance logs
+    // const attendanceResponse = await device.getAttendances();
+    // const attendance = attendanceResponse.data || []; 
 
-  for (const key of Object.keys(grouped)) {
-    const [employeeIdStr, date] = key.split("-");
-    const employeeId = Number(employeeIdStr);
+    // // Get today's date in local time
+    // const today = new Date();
+    // const todayDay = today.getDate();
+    // const todayMonth = today.getMonth();
+    // const todayYear = today.getFullYear();
 
-    const logsForDay = grouped[key].sort(
-      (a, b) => new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime()
-    );
+    // const userLogsToday = attendance.filter((a: any) => {
+    //   const logDate = new Date(a.record_time);
+    //   return (
+    //     a.user_id === "44" &&
+    //     logDate.getDate() === todayDay &&
+    //     logDate.getMonth() === todayMonth &&
+    //     logDate.getFullYear() === todayYear
+    //   );
+    // });
 
-    const check_in_datetime = logsForDay[0].recordTime;
-    const check_out_datetime = logsForDay[logsForDay.length - 1].recordTime;
+    // console.log("Today's Attendance logs for user 44:", userLogsToday);
 
-    const check_in_time = check_in_datetime.split(" ")[1];
-    const check_out_time = check_out_datetime.split(" ")[1];
-    const attendance_date = check_in_datetime.split(" ")[0];
-
-    const shift = await getEmployeeShift(employeeId);
-    if (!shift) continue;
-
-    const check_in_status = getCheckInStatus(check_in_time, shift.start_time, shift.grace_minutes);
-
-    const { work_status, working_hours_formattted: work_hours } = getWorkStatus(check_in_time, check_out_time);
-
-    // Use work_status as check-out status
-    const check_out_status = work_status;
-
-    const attendanceData = {
-      employee_id: employeeId,
-      attendance_date,
-      check_in_time,
-      check_out_time,
-      work_hours,
-      check_in_status,
-      check_out_status,
-      day_status: "present",
-    };
-
-    const existing = await prisma.attendance.findFirst({
-      where: { employee_id: employeeId, date: attendance_date },
-    });
-
-    if (existing) {
-      await updateAttendance(
-        { attendance_id: existing.id, ...attendanceData },
-        work_status,        // work_status for logic
-        check_in_status     // check-in status
-      );
-    } else {
-      await addAttendance(attendanceData, work_status, check_in_status);
-    }
+    await device.disconnect();
+  } catch (err) {
+    console.error("Error:", err);
   }
+}
 
-  console.log(`Manual logs sync completed for ${logs.length} logs.`);
-};
+testZkteco();

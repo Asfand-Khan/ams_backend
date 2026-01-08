@@ -540,7 +540,10 @@ export const createMeeting = async (data: Meeting) => {
       .map((name, index) => `<tr><td>${safeHtml(name)}</td></tr>`)
       .join("");
     await sendEmail({
-      to: "rajaammarali2003@gmail.com",
+      to: attendeesEmails.join(","),
+      cc: [meetingInfo.host_email, meetingInfo.hr_email]
+        .filter(Boolean)
+        .join(","),
       subject: `Orio Connect - New Meeting Scheduled: ${meetingInfo.title}`,
       html: getMeetingTemplate("creation", {
         employee_name: "Team",

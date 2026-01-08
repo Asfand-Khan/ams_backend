@@ -152,9 +152,7 @@ export const getMeetingTemplate = (
                 templateType === "creation"
                   ? `
               <p style="margin:0 0 12px 0;">
-                A new ${capitalize(
-                  recurrence_type
-                )} meeting has been scheduled by <strong>${host_name}</strong>.
+                A new meeting has been scheduled for <strong>Tomorrow</strong>.
               </p>`
                   : ""
               }
@@ -227,13 +225,16 @@ export const getMeetingTemplate = (
                       </tr>`
                           : ""
                       }
+                           <tr>
+                        <td style="font-weight:bold;">Agenda</td>
+                        <td>${safe(agenda)}</td>
+                      </tr>
                       <tr>
                         <td style="font-weight:bold;">Location</td>
                         <td>${capitalize(location_type)}: ${safe(
     location_details
   )}</td>
                       </tr>
-      
                       ${
                         created_by_name &&
                         created_at &&

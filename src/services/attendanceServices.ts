@@ -296,6 +296,7 @@ export const getAttendanceByDate = async (data: AttendanceByDate, user: any) => 
       emp.id AS employee_id,
       emp.employee_code,
       emp.full_name,
+      emp.profile_picture,
       ? AS date,
       att.check_in_time,
       att.check_out_time,
