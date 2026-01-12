@@ -1,142 +1,200 @@
-// import { ZKLib } from "node-zklib";
-// import prisma from "../config/db";
-// import { getEmployeeShift, addAttendance, updateAttendance } from "./attendanceServices";
-// import { getCheckInStatus } from "../utils/getCheckInStatus";
-// import { getWorkStatus } from "../utils/getWorkStatusAndHours";
+const Zkteco = require("zkteco-js");
+import prisma from "../config/db";
+import {
+  getEmployeeShift,
+  addAttendance,
+  updateAttendance,
+} from "./attendanceServices";
+import { getCheckInStatus } from "../utils/getCheckInStatus";
+import { getWorkStatus } from "../utils/getWorkStatusAndHours";
 
-// interface DeviceLog {
-//   employeeId: number;
-//   recordTime: string;
-// }
+const DEVICE_IP = "192.168.18.80";
+const PORT = 4370;
+const INPORT = 5200;
+const TIMEOUT = 90000;
 
-// interface SyncOptions {
-//   ip: string;
-//   port?: number;
-//   startDate: string;
-//   endDate: string;
-// }
+interface DeviceLog {
+  employeeId: number;
+  recordTime: string;
+  user_id?: number;
+}
 
-// // Fetch logs from fingerprint device
-// export const getAttendanceFromDevice = async (options: SyncOptions): Promise<DeviceLog[]> => {
-//   const { ip, port = 4370 } = options;
-//   const zkInstance = new ZKLib(ip, port, 10000);
-//   try {
-//     await zkInstance.createSocket();
-//     await zkInstance.getTime();
-//     const logsRaw = await zkInstance.getAttendance();
+interface SyncOptions {
+  startDate: string;
+  endDate: string;
+}
 
-//     return logsRaw.map(log => ({
-//       employeeId: Number(log.enrollNumber),
-//       recordTime: log.date,
-//     }));
-//   } catch (err) {
-//     console.error("Device connection error:", err);
-//     return [];
-//   } finally {
-//     zkInstance.disconnect();
-//   }
-// };
+export async function fetchAttendance(startDate: Date, endDate: Date) {
+  const device = new Zkteco(DEVICE_IP, PORT, INPORT, TIMEOUT);
+  try {
+    await device.createSocket();
+    console.log("✅ TCP connected");
+    let allLogs: any[] = [];
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const response = await device.getAttendances();
+        allLogs = response?.data ?? [];
+        console.log(`📊 Fetched ${allLogs.length} logs`);
+        break;
+      } catch (err: any) {
+        console.error(`Attempt ${attempt} failed:`, err.message || err);
+        if (attempt === 3) throw err;
+        await new Promise((r) => setTimeout(r, 5000));
+      }
+    }
+    if (!allLogs.length) {
+      console.log("ℹ️ No logs found");
+      return [];
+    }
+    const logsInRange = allLogs.filter((a) => {
+      if (!a.record_time) return false;
+      const logDate = new Date(a.record_time);
+      return logDate >= startDate && logDate <= endDate;
+    });
+    return logsInRange;
+  } catch (err) {
+    console.error("❌ Device error:", err);
+    return [];
+  } finally {
+    try {
+      await device.disconnect();
+      console.log("🔌 Disconnected");
+    } catch {}
+  }
+}
 
-// // Sync function with logging & multi-record handling
-// export const syncFingerprintLogs = async (options: SyncOptions) => {
-//   const logs = await getAttendanceFromDevice(options);
-//   if (logs.length === 0) {
-//     console.log("No logs fetched from device.");
-//     return;
-//   }
+export const syncFingerprintLogs = async (options: SyncOptions) => {
+  console.log("🔹 Starting fingerprint sync...");
+  console.log("Options:", options);
 
-//   console.log(`Fetched ${logs.length} logs from device.`);
+  const logs = await fetchAttendance(
+    new Date(options.startDate),
+    new Date(options.endDate)
+  );
+  console.log(`📊 Total logs fetched from device: ${logs.length}`);
 
-//   // Group logs by employee per day
-//   const grouped: Record<string, DeviceLog[]> = {};
-//   logs.forEach(log => {
-//     const date = log.recordTime.split(" ")[0];
-//     const key = `${log.employeeId}-${date}`;
-//     if (!grouped[key]) grouped[key] = [];
-//     grouped[key].push(log);
-//   });
+  if (!logs.length) return;
+    // Filter only for specific employee IDs
+  const allowedEmployeeIds = [5, 15, 27];
+  const filteredLogs = logs.filter(log => {
+    const employeeId = log.employeeId ?? log.user_id;
+    return employeeId && allowedEmployeeIds.includes(Number(employeeId));
+  });
 
-//   const insertLogs: any[] = [];
-//   const updateLogs: any[] = [];
+  console.log(`📊 Total logs after filtering: ${filteredLogs.length}`);
 
-//   for (const key of Object.keys(grouped)) {
-//     const [employeeIdStr, date] = key.split("-");
-//     const employeeId = Number(employeeIdStr);
+  if (!filteredLogs.length) return;
+  const grouped: Record<string, DeviceLog[]> = {};
+  logs.forEach((log) => {
+    const employeeId = log.employeeId ?? log.user_id;
+    const recordTime = log.record_time ?? log.recordTime;
+    if (!employeeId || !recordTime) {
+      console.warn(
+        "⚠️ Skipping log with missing employeeId or recordTime:",
+        log
+      );
+      return;
+    }
+    const dateKey = new Date(recordTime).toISOString().split("T")[0];
+    const key = `${employeeId}-${dateKey}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push({ ...log, recordTime });
+  });
+  console.log(
+    `🔹 Logs grouped by employee/day: ${Object.keys(grouped).length} groups`
+  );
+  const insertLogs: any[] = [];
+  const updateLogs: any[] = [];
+  for (const key of Object.keys(grouped)) {
+    const [employeeIdStr] = key.split("-");
+    const employeeId = Number(employeeIdStr);
+    const logsForDay = grouped[key].sort(
+      (a, b) =>
+        new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime()
+    );
+    const recordDate = new Date(logsForDay[0].recordTime);
+    const dateString = `${recordDate.getFullYear()}-${(
+      recordDate.getMonth() + 1
+    )
+      .toString()
+      .padStart(2, "0")}-${recordDate.getDate().toString().padStart(2, "0")}`;
+    const check_in_time = new Date(logsForDay[0].recordTime)
+      .toTimeString()
+      .split(" ")[0];
+    const check_out_time = new Date(
+      logsForDay[logsForDay.length - 1].recordTime
+    )
+      .toTimeString()
+      .split(" ")[0];
+    console.log(
+      `🔹 Processing employee ${employeeId} for date ${dateString}. Check-in: ${check_in_time}, Check-out: ${check_out_time}`
+    );
+    const shift = await getEmployeeShift(employeeId);
+    if (!shift) {
+      console.warn(`⚠️ No shift found for employee ${employeeId}, skipping...`);
+      continue;
+    }
+    const check_in_status = getCheckInStatus(
+      check_in_time,
+      shift.start_time,
+      shift.grace_minutes
+    );
+    const work_status = getWorkStatus(check_in_time, check_out_time);
 
-//     // Sort logs by time to get check-in and check-out
-//     const logsForDay = grouped[key].sort(
-//       (a, b) => new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime()
-//     );
-//     const check_in_time = logsForDay[0].recordTime;
-//     const check_out_time = logsForDay[logsForDay.length - 1].recordTime;
-
-//     const shift = await getEmployeeShift(employeeId);
-//     if (!shift) {
-//       console.log(`Shift not found for employee ${employeeId}. Skipping...`);
-//       continue;
-//     }
-
-//     const check_in_status = getCheckInStatus(check_in_time, shift.start_time, shift.grace_minutes);
-//     const work_status = getWorkStatus(check_in_time, check_out_time);
-
-//     const existing = await prisma.attendance.findFirst({
-//       where: { employee_id: employeeId, date },
-//     });
-
-//     if (existing) {
-//       updateLogs.push({
-//         attendance_id: existing.id,
-//         date,
-//         check_in_time,
-//         check_out_time,
-//         work_status,
-//         check_in_status,
-//       });
-//     } else {
-//       insertLogs.push({
-//         employee_id: employeeId,
-//         date,
-//         check_in_time,
-//         check_out_time,
-//         work_status,
-//         check_in_status,
-//       });
-//     }
-//   }
-
-//   console.log("Prepared logs to INSERT:", insertLogs);
-//   console.log("Prepared logs to UPDATE:", updateLogs);
-
-//   // Optional: Preview data before actual DB insert/update
-//   // Uncomment the next line if you want to halt execution for verification
-//   return;
-
-//   // Bulk insert/update
-//   for (const log of insertLogs) {
-//     await addAttendance(
-//       {
-//         employee_id: log.employee_id,
-//         attendance_date: log.date,
-//         check_in_time: log.check_in_time,
-//         check_out_time: log.check_out_time,
-//       },
-//       log.work_status,
-//       log.check_in_status
-//     );
-//   }
-
-//   for (const log of updateLogs) {
-//     await updateAttendance(
-//       {
-//         attendance_id: log.attendance_id,
-//         attendance_date: log.date,
-//         check_in_time: log.check_in_time,
-//         check_out_time: log.check_out_time,
-//       },
-//       log.work_status,
-//       log.check_in_status
-//     );
-//   }
-
-//   console.log(`Fingerprint sync completed. Inserted: ${insertLogs.length}, Updated: ${updateLogs.length}`);
-// };
+    const existing = await prisma.attendance.findFirst({
+      where: { employee_id: employeeId, date: dateString },
+    });
+    if (!existing) {
+      console.log(
+        `ℹ️ Inserting attendance for employee ${employeeId} on ${dateString}`
+      );
+      insertLogs.push({
+        employee_id: employeeId,
+        attendance_date: dateString,
+        check_in_time,
+        check_out_time,
+        work_status,
+        check_in_status,
+      });
+    } else {
+      let new_check_in = existing.check_in_time ?? check_in_time;
+      let new_check_out = existing.check_out_time ?? check_out_time;
+      let updated = false;
+      if (!existing.check_in_time || check_in_time < existing.check_in_time) {
+        new_check_in = check_in_time;
+        updated = true;
+      }
+      if (
+        !existing.check_out_time ||
+        check_out_time > existing.check_out_time
+      ) {
+        new_check_out = check_out_time;
+        updated = true;
+      }
+      if (updated) {
+        console.log(
+          `ℹ️ Updating attendance for employee ${employeeId} on ${dateString}`
+        );
+        updateLogs.push({
+          attendance_id: existing.id,
+          date: dateString,
+          check_in_time: new_check_in,
+          check_out_time: new_check_out,
+          work_status,
+          check_in_status,
+        });
+      } else {
+        console.log(
+          `ℹ️ No update needed for employee ${employeeId} on ${dateString}`
+        );
+      }
+    }
+  }
+  for (const log of insertLogs) {
+    await addAttendance(log, log.work_status, log.check_in_status);
+  }
+  for (const log of updateLogs) {
+    await updateAttendance(log, log.work_status, log.check_in_status);
+  }
+  console.log("✅ Fingerprint sync finished.");
+};
