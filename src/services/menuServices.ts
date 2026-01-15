@@ -8,6 +8,7 @@ type MenuItem = {
   url: string;
   icon: string | null;
   sorting: number;
+  type: string;
 };
 
 type MenuOutput = {
@@ -18,6 +19,7 @@ type MenuOutput = {
   parent_id: number | null;
   sorting: number;
   description: string;
+  type: string;
   childs: ChildItem[];
 };
 
@@ -28,6 +30,7 @@ type ChildItem = {
   icon: string | null;
   parent_id: number;
   sorting: number;
+  type: string;
   description: string;
 };
 
@@ -35,7 +38,7 @@ function transformMenu(flatMenu: MenuItem[]): MenuOutput[] {
   const menuMap: { [key: number]: MenuOutput } = {};
 
   flatMenu.forEach((item) => {
-    const { id, name, url, icon, parent_id, sorting, description } = item;
+    const { id, name, url, icon, parent_id, sorting, description,type } = item;
 
     if (parent_id === null) {
       menuMap[id] = {
@@ -46,13 +49,14 @@ function transformMenu(flatMenu: MenuItem[]): MenuOutput[] {
         parent_id,
         sorting,
         description,
+        type,
         childs: [],
       };
     }
   });
 
   flatMenu.forEach((item) => {
-    const { id, name, url, icon, parent_id, sorting, description } = item;
+    const { id, name, url, icon, parent_id, sorting, description,type } = item;
 
     if (parent_id !== null && menuMap[parent_id]) {
       menuMap[parent_id].childs.push({
@@ -62,6 +66,7 @@ function transformMenu(flatMenu: MenuItem[]): MenuOutput[] {
         icon,
         parent_id,
         sorting,
+        type,
         description,
       });
     }

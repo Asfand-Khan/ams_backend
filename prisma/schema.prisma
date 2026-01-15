@@ -17,6 +17,11 @@ enum UserType {
   lead
 }
 
+enum MenuType {
+  teamlist
+  hrm
+}
+
 enum Gender {
   male
   female
@@ -278,6 +283,7 @@ model Menu {
   url         String? @db.VarChar(255)
   icon        String? @db.VarChar(100)
   sorting     Int     @default(0)
+  type                 MenuType @default(hrm)
   created_by  Int
   deleted_by  Int?
   is_active   Boolean @default(true)

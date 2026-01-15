@@ -94,7 +94,7 @@ export const sendOtpHandler = async (
 
     await sendEmail({
       to: userByUsername.email,
-      subject: "Orio Connect - OTP for login",
+      subject: "OTP for Login - Orio Connect",
       html: getOTPTemplate(
         userByUsername.otp_token,
         userByUsername.employee?.full_name || userByUsername.username

@@ -544,7 +544,7 @@ export const createMeeting = async (data: Meeting) => {
       cc: [meetingInfo.host_email, meetingInfo.hr_email]
         .filter(Boolean)
         .join(","),
-      subject: `Orio Connect - New Meeting Scheduled: ${meetingInfo.title}`,
+      subject: `${meetingInfo.title} - New Meeting Scheduled | Orio Connect`,
       html: getMeetingTemplate("creation", {
         employee_name: "Team",
         meeting_id: meetingInfo.meeting_id.toString(),
@@ -714,7 +714,7 @@ export const meetingMinute = async (
 
     await sendEmail({
       to: attendeesEmails.join(","),
-      subject: `Orio Connect - Meeting Minutes Published: ${meetingInfo.title}`,
+      subject: `${meetingInfo.title} - Meeting Minutes | Orio Connect`,
       cc: [meetingInfo.host_email, meetingInfo.hr_email]
         .filter(Boolean)
         .join(","),

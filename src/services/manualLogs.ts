@@ -50,7 +50,7 @@ export async function testZkteco() {
     const userLogsToday = attendance.filter((a: any) => {
       const logDate = new Date(a.record_time);
       return (
-        a.user_id === "15" ||  a.user_id === "27" &&
+        a.user_id === "27" ||  a.user_id === "27" &&
         logDate.getDate() === todayDay &&
         logDate.getMonth() === todayMonth &&
         logDate.getFullYear() === todayYear

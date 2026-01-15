@@ -64,7 +64,7 @@ export const createAttendanceCorrection = async (
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
-      subject: `Orio Connect - Attendance Correction Request`,
+      subject: `Orio Connect`,
       cc: [emp.hr_email, emp.team_lead_email], 
       html: getAttendanceCorrectionRequestTemplate({
         full_name : emp.full_name,

@@ -67,6 +67,7 @@ export const getUserMenus = async (userId: number) => {
     icon: userMenu.menu.icon,
     sorting: userMenu.menu.sorting,
     url: userMenu.menu.url,
+    type: userMenu.menu.type,
     parent_id: userMenu.menu.parent_id,
     can_view: userMenu.can_view ? "1" : "0",
     can_create: userMenu.can_create ? "1" : "0",
