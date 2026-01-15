@@ -269,25 +269,48 @@ model Employee {
   MeetingAttendee MeetingAttendee[]
 
   // ✅ Added Meeting Host Relations
-  MeetingHost Meeting[] @relation("MeetingHost")
+  MeetingHost         Meeting[]          @relation("MeetingHost")
+  createdProjects     Project[]
+  createdTaskStatuses TaskStatusMaster[]
+  createdTasks        Task[]
+
+  assignedTasks   TaskAssignment[] @relation("TaskAssignee")
+  assignedByTasks TaskAssignment[] @relation("TaskAssigner")
+
+  taskStatusChanges TaskStatusLog[] @relation("TaskStatusChangedBy")
+  taskComments      TaskComment[]
+
+  // ── TICKET ──────────────────────────────────────────────────────
+  createdTickets Ticket[] // ← added (required)
+
+  assignedTickets   TicketAssignment[] @relation("TicketAssignee")
+  assignedByTickets TicketAssignment[] @relation("TicketAssigner")
+
+  ticketComments      TicketComment[] // ← optional but recommended
+  performedActivities ActivityLog[] // ← Add this line
+  // ── Activity Logs ───────────────────────────────────────────────
+  projectMemberships  ProjectAssignment[] @relation("ProjectMembers")
+
+  // 2. All assignments this employee has made (who assigned others)
+  assignedProjects ProjectAssignment[] @relation("ProjectAssigner")
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
 }
 
 model Menu {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
-  description String? @db.VarChar(100)
+  description String?  @db.VarChar(100)
   parent_id   Int?
-  url         String? @db.VarChar(255)
-  icon        String? @db.VarChar(100)
-  sorting     Int     @default(0)
-  type                 MenuType @default(hrm)
+  url         String?  @db.VarChar(255)
+  icon        String?  @db.VarChar(100)
+  sorting     Int      @default(0)
+  type        MenuType @default(hrm)
   created_by  Int
   deleted_by  Int?
-  is_active   Boolean @default(true)
-  is_deleted  Boolean @default(false)
+  is_active   Boolean  @default(true)
+  is_deleted  Boolean  @default(false)
 
   created_at DateTime  @default(now())
   updated_at DateTime  @updatedAt
@@ -743,4 +766,257 @@ model AllActivityLog {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// TEAM LIST PRISMA
+enum EntityType {
+  task
+  ticket
+}
+
+enum ActivityAction {
+  created
+  assigned
+  reassigned
+  status_changed
+  priority_changed
+  comment_added
+  closed
+  reopened
+}
+
+enum AssignmentStatus {
+  active
+  revoked
+}
+
+enum TicketType {
+  bug
+  feature
+  support
+  incident
+  change_request
+}
+
+enum TicketStatus {
+  open
+  assigned
+  in_progress
+  resolved
+  closed
+  reopened
+}
+
+enum ProjectStatus {
+  active
+  on_hold
+  completed
+  archived
+}
+
+enum DurationType {
+  hour
+  day
+  minute
+}
+
+model Project {
+  id          Int           @id @default(autoincrement())
+  name        String        @db.VarChar(150)
+  description String?       @db.Text
+  status      ProjectStatus @default(active)
+  created_by  Int
+  is_active   Boolean       @default(true)
+  is_deleted  Boolean       @default(false)
+  created_at  DateTime      @default(now())
+  updated_at  DateTime      @updatedAt
+
+  creator      Employee            @relation(fields: [created_by], references: [id])
+  tasks        Task[]
+  tickets      Ticket[]
+  taskStatuses TaskStatusMaster[]
+  assignments  ProjectAssignment[]
+
+  @@index([status])
+}
+
+model ProjectAssignment {
+  id          Int              @id @default(autoincrement())
+  project_id  Int
+  employee_id Int
+  assigned_by Int
+  assigned_at DateTime         @default(now())
+  status      AssignmentStatus @default(active)
+  revoked_at  DateTime?
+
+  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+
+  // Assigned employee (the person who is assigned to the project)
+  employee Employee @relation("ProjectMembers", fields: [employee_id], references: [id])
+
+  // Person who did the assignment (manager / admin / HR etc)
+  assigner Employee @relation("ProjectAssigner", fields: [assigned_by], references: [id])
+
+  @@unique([project_id, employee_id])
+  @@index([project_id])
+  @@index([employee_id])
+}
+
+model TaskStatusMaster {
+  id         Int      @id @default(autoincrement())
+  project_id Int
+  name       String
+  color      String?
+  created_by Int
+  created_at DateTime @default(now())
+
+  project Project  @relation(fields: [project_id], references: [id])
+  creator Employee @relation(fields: [created_by], references: [id])
+
+  tasks Task[]
+
+  // Status change history
+  oldStatusLogs TaskStatusLog[] @relation("OldStatus")
+  newStatusLogs TaskStatusLog[] @relation("NewStatus")
+
+  // Comments that were made when task was in this status (optional)
+  comments TaskComment[] @relation("CommentOnStatus")
+
+  @@unique([project_id, name])
+}
+
+model Task {
+  id             Int           @id @default(autoincrement())
+  project_id     Int
+  title          String        @db.VarChar(200)
+  description    String?       @db.Text
+  priority       Priority      @default(medium)
+  duration_type  DurationType? // hour / day / minute
+  duration_value Int? // number of units
+  status_id      Int
+  created_by     Int
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @updatedAt
+
+  project Project          @relation(fields: [project_id], references: [id])
+  creator Employee         @relation(fields: [created_by], references: [id])
+  status  TaskStatusMaster @relation(fields: [status_id], references: [id])
+
+  assignments TaskAssignment[]
+  comments    TaskComment[]
+  statusLogs  TaskStatusLog[]
+}
+
+model TaskAssignment {
+  id          Int              @id @default(autoincrement())
+  task_id     Int
+  assigned_to Int
+  assigned_by Int
+  status      AssignmentStatus @default(active)
+  assigned_at DateTime         @default(now())
+  revoked_at  DateTime?
+
+  task     Task     @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  assignee Employee @relation("TaskAssignee", fields: [assigned_to], references: [id])
+  assigner Employee @relation("TaskAssigner", fields: [assigned_by], references: [id])
+}
+
+model TaskStatusLog {
+  id            Int      @id @default(autoincrement())
+  task_id       Int
+  old_status_id Int?
+  new_status_id Int
+  changed_by    Int
+  changed_at    DateTime @default(now())
+
+  task Task @relation(fields: [task_id], references: [id], onDelete: Cascade)
+
+  old_status TaskStatusMaster? @relation("OldStatus", fields: [old_status_id], references: [id])
+  new_status TaskStatusMaster  @relation("NewStatus", fields: [new_status_id], references: [id])
+
+  changedBy Employee @relation("TaskStatusChangedBy", fields: [changed_by], references: [id])
+
+  @@index([task_id])
+  @@index([changed_by])
+}
+
+model TaskComment {
+  id          Int      @id @default(autoincrement())
+  task_id     Int
+  employee_id Int
+  comment     String   @db.LongText
+  created_at  DateTime @default(now())
+  status_id   Int? // Optional: status at time of comment
+
+  task     Task              @relation(fields: [task_id], references: [id], onDelete: Cascade)
+  employee Employee          @relation(fields: [employee_id], references: [id])
+  status   TaskStatusMaster? @relation("CommentOnStatus", fields: [status_id], references: [id])
+
+  @@index([task_id])
+  @@index([employee_id])
+}
+
+model Ticket {
+  id             Int           @id @default(autoincrement())
+  project_id     Int
+  title          String        @db.VarChar(200)
+  description    String        @db.LongText
+  type           TicketType
+  status         TicketStatus  @default(open)
+  priority       Priority      @default(medium)
+  duration_type  DurationType? // hour / day / minute
+  duration_value Int? // number of units
+  created_by     Int
+  created_at     DateTime      @default(now())
+  updated_at     DateTime      @default(now())
+
+  project Project  @relation(fields: [project_id], references: [id])
+  creator Employee @relation(fields: [created_by], references: [id])
+
+  assignments TicketAssignment[]
+  comments    TicketComment[]
+}
+
+model TicketAssignment {
+  id          Int              @id @default(autoincrement())
+  ticket_id   Int
+  assigned_to Int
+  assigned_by Int
+  status      AssignmentStatus @default(active)
+  assigned_at DateTime         @default(now())
+  revoked_at  DateTime?
+
+  ticket   Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  assignee Employee @relation("TicketAssignee", fields: [assigned_to], references: [id])
+  assigner Employee @relation("TicketAssigner", fields: [assigned_by], references: [id])
+}
+
+model TicketComment {
+  id          Int           @id @default(autoincrement())
+  ticket_id   Int
+  employee_id Int
+  comment     String        @db.LongText
+  created_at  DateTime      @default(now())
+  status      TicketStatus? // Optional: if tied to status change
+
+  ticket   Ticket   @relation(fields: [ticket_id], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employee_id], references: [id])
+}
+
+model ActivityLog {
+  id           Int            @id @default(autoincrement())
+  entity_type  EntityType // task or ticket
+  entity_id    Int
+  action       ActivityAction // created, assigned, reassigned, status_changed, priority_changed, comment_added, closed, reopened
+  field_name   String? // status / assigned_to / priority
+  old_value    String?
+  new_value    String?
+  performed_by Int
+  performed_at DateTime       @default(now())
+  ip_address   String?        @db.VarChar(45)
+  user_agent   String?        @db.Text
+
+  employee Employee @relation(fields: [performed_by], references: [id])
+
+  @@index([entity_type, entity_id])
 }
