@@ -69,14 +69,13 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
 
   const logs = await fetchAttendance(
     new Date(options.startDate),
-    new Date(options.endDate)
+    new Date(options.endDate),
   );
   console.log(`📊 Total logs fetched from device: ${logs.length}`);
 
   if (!logs.length) return;
-    // Filter only for specific employee IDs
-  const allowedEmployeeIds = [5, 15, 27];
-  const filteredLogs = logs.filter(log => {
+  const allowedEmployeeIds = [9, 15, 27, 43, 5,17];
+  const filteredLogs = logs.filter((log) => {
     const employeeId = log.employeeId ?? log.user_id;
     return employeeId && allowedEmployeeIds.includes(Number(employeeId));
   });
@@ -85,13 +84,13 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
 
   if (!filteredLogs.length) return;
   const grouped: Record<string, DeviceLog[]> = {};
-  logs.forEach((log) => {
+  filteredLogs.forEach((log) => {
     const employeeId = log.employeeId ?? log.user_id;
     const recordTime = log.record_time ?? log.recordTime;
     if (!employeeId || !recordTime) {
       console.warn(
         "⚠️ Skipping log with missing employeeId or recordTime:",
-        log
+        log,
       );
       return;
     }
@@ -101,7 +100,7 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
     grouped[key].push({ ...log, recordTime });
   });
   console.log(
-    `🔹 Logs grouped by employee/day: ${Object.keys(grouped).length} groups`
+    `🔹 Logs grouped by employee/day: ${Object.keys(grouped).length} groups`,
   );
   const insertLogs: any[] = [];
   const updateLogs: any[] = [];
@@ -110,7 +109,7 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
     const employeeId = Number(employeeIdStr);
     const logsForDay = grouped[key].sort(
       (a, b) =>
-        new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime()
+        new Date(a.recordTime).getTime() - new Date(b.recordTime).getTime(),
     );
     const recordDate = new Date(logsForDay[0].recordTime);
     const dateString = `${recordDate.getFullYear()}-${(
@@ -122,12 +121,12 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
       .toTimeString()
       .split(" ")[0];
     const check_out_time = new Date(
-      logsForDay[logsForDay.length - 1].recordTime
+      logsForDay[logsForDay.length - 1].recordTime,
     )
       .toTimeString()
       .split(" ")[0];
     console.log(
-      `🔹 Processing employee ${employeeId} for date ${dateString}. Check-in: ${check_in_time}, Check-out: ${check_out_time}`
+      `🔹 Processing employee ${employeeId} for date ${dateString}. Check-in: ${check_in_time}, Check-out: ${check_out_time}`,
     );
     const shift = await getEmployeeShift(employeeId);
     if (!shift) {
@@ -137,7 +136,7 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
     const check_in_status = getCheckInStatus(
       check_in_time,
       shift.start_time,
-      shift.grace_minutes
+      shift.grace_minutes,
     );
     const work_status = getWorkStatus(check_in_time, check_out_time);
 
@@ -146,7 +145,7 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
     });
     if (!existing) {
       console.log(
-        `ℹ️ Inserting attendance for employee ${employeeId} on ${dateString}`
+        `ℹ️ Inserting attendance for employee ${employeeId} on ${dateString}`,
       );
       insertLogs.push({
         employee_id: employeeId,
@@ -159,33 +158,34 @@ export const syncFingerprintLogs = async (options: SyncOptions) => {
     } else {
       let new_check_in = existing.check_in_time ?? check_in_time;
       let new_check_out = existing.check_out_time ?? check_out_time;
-      let updated = false;
+      let updated = true;
       if (!existing.check_in_time || check_in_time < existing.check_in_time) {
         new_check_in = check_in_time;
-        updated = true;
+        // updated = true;
       }
       if (
         !existing.check_out_time ||
         check_out_time > existing.check_out_time
       ) {
         new_check_out = check_out_time;
-        updated = true;
+        // updated = true;
       }
       if (updated) {
+         const final_work_status = getWorkStatus(new_check_in, new_check_out);
         console.log(
-          `ℹ️ Updating attendance for employee ${employeeId} on ${dateString}`
+          `ℹ️ Updating attendance for employee ${employeeId} on ${dateString}`,
         );
         updateLogs.push({
-          attendance_id: existing.id,
-          date: dateString,
-          check_in_time: new_check_in,
-          check_out_time: new_check_out,
-          work_status,
-          check_in_status,
+      attendance_id: existing.id,
+      date: dateString,
+      check_in_time: new_check_in,
+      check_out_time: new_check_out,
+      work_status: final_work_status,
+      check_in_status,
         });
       } else {
         console.log(
-          `ℹ️ No update needed for employee ${employeeId} on ${dateString}`
+          `ℹ️ No update needed for employee ${employeeId} on ${dateString}`,
         );
       }
     }

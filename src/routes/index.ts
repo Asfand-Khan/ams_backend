@@ -17,6 +17,7 @@ import designationRoutes from "./designationRoutes";
 import shiftRoutes from "./shiftRoutes";
 import meetingRoutes from "./meetingRoutes";
 import reportingRoutes from "./reportingRoutes";
+import projectRoutes from "./projectRoutes";
 
 const router = Router();
 
@@ -38,6 +39,7 @@ router.use("/designations", designationRoutes);
 router.use("/shifts", shiftRoutes);
 router.use("/meetings", meetingRoutes);
 router.use("/reporting", reportingRoutes);
+router.use("/projects", projectRoutes);
 
 router.get("/", (req, res) => {
   const dateObj = new Date();

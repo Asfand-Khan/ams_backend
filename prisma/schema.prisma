@@ -286,13 +286,16 @@ model Employee {
   assignedTickets   TicketAssignment[] @relation("TicketAssignee")
   assignedByTickets TicketAssignment[] @relation("TicketAssigner")
 
-  ticketComments      TicketComment[] // ← optional but recommended
-  performedActivities ActivityLog[] // ← Add this line
+  ticketComments     TicketComment[] // ← optional but recommended
   // ── Activity Logs ───────────────────────────────────────────────
-  projectMemberships  ProjectAssignment[] @relation("ProjectMembers")
+  projectMemberships ProjectAssigner[] @relation("ProjectMembers")
 
   // 2. All assignments this employee has made (who assigned others)
-  assignedProjects ProjectAssignment[] @relation("ProjectAssigner")
+  revokedProjects  ProjectAssigner[] @relation("ProjectRevoker")
+  projectAssigners ProjectAssigner[] @relation("ProjectAssigner")
+  projectComments  ProjectComment[]
+   activityPerformedLogs TeamActivityLog[] @relation("ActorLog")
+  activityTargetLogs    TeamActivityLog[] @relation("TargetLog")
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
@@ -768,8 +771,8 @@ model AllActivityLog {
   updatedAt DateTime @updatedAt
 }
 
-// TEAM LIST PRISMA
 enum EntityType {
+  project
   task
   ticket
 }
@@ -778,11 +781,20 @@ enum ActivityAction {
   created
   assigned
   reassigned
+  revoked
   status_changed
   priority_changed
   comment_added
+  comment_updated
+  comment_deleted
+  attachment_added
+  attachment_removed
   closed
   reopened
+  updated
+  deleted
+  status_added
+  status_deleted
 }
 
 enum AssignmentStatus {
@@ -831,16 +843,17 @@ model Project {
   created_at  DateTime      @default(now())
   updated_at  DateTime      @updatedAt
 
-  creator      Employee            @relation(fields: [created_by], references: [id])
+  creator      Employee           @relation(fields: [created_by], references: [id])
   tasks        Task[]
   tickets      Ticket[]
   taskStatuses TaskStatusMaster[]
-  assignments  ProjectAssignment[]
+  assignments  ProjectAssigner[]
+  comments     ProjectComment[]
 
   @@index([status])
 }
 
-model ProjectAssignment {
+model ProjectAssigner {
   id          Int              @id @default(autoincrement())
   project_id  Int
   employee_id Int
@@ -848,20 +861,22 @@ model ProjectAssignment {
   assigned_at DateTime         @default(now())
   status      AssignmentStatus @default(active)
   revoked_at  DateTime?
-
-  project Project @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  revoked_by  Int?
+  project     Project          @relation(fields: [project_id], references: [id], onDelete: Cascade)
 
   // Assigned employee (the person who is assigned to the project)
   employee Employee @relation("ProjectMembers", fields: [employee_id], references: [id])
 
   // Person who did the assignment (manager / admin / HR etc)
-  assigner Employee @relation("ProjectAssigner", fields: [assigned_by], references: [id])
+  assigner Employee  @relation("ProjectAssigner", fields: [assigned_by], references: [id])
+  revoker  Employee? @relation("ProjectRevoker", fields: [revoked_by], references: [id])
 
   @@unique([project_id, employee_id])
   @@index([project_id])
   @@index([employee_id])
 }
 
+// TaskStatusMaster (soft delete)
 model TaskStatusMaster {
   id         Int      @id @default(autoincrement())
   project_id Int
@@ -869,20 +884,36 @@ model TaskStatusMaster {
   color      String?
   created_by Int
   created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  is_active  Boolean  @default(true) // Soft delete
 
   project Project  @relation(fields: [project_id], references: [id])
   creator Employee @relation(fields: [created_by], references: [id])
 
   tasks Task[]
 
-  // Status change history
   oldStatusLogs TaskStatusLog[] @relation("OldStatus")
   newStatusLogs TaskStatusLog[] @relation("NewStatus")
-
-  // Comments that were made when task was in this status (optional)
-  comments TaskComment[] @relation("CommentOnStatus")
+  comments      TaskComment[]   @relation("CommentOnStatus")
 
   @@unique([project_id, name])
+}
+
+// ProjectComment (new)
+model ProjectComment {
+  id          Int      @id @default(autoincrement())
+  project_id  Int
+  employee_id Int
+  comment     String   @db.LongText
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  is_active   Boolean  @default(true)
+
+  project  Project  @relation(fields: [project_id], references: [id], onDelete: Cascade)
+  employee Employee @relation(fields: [employee_id], references: [id])
+
+  @@index([project_id])
+  @@index([employee_id])
 }
 
 model Task {
@@ -1003,20 +1034,33 @@ model TicketComment {
   employee Employee @relation(fields: [employee_id], references: [id])
 }
 
-model ActivityLog {
-  id           Int            @id @default(autoincrement())
-  entity_type  EntityType // task or ticket
-  entity_id    Int
-  action       ActivityAction // created, assigned, reassigned, status_changed, priority_changed, comment_added, closed, reopened
-  field_name   String? // status / assigned_to / priority
-  old_value    String?
-  new_value    String?
-  performed_by Int
-  performed_at DateTime       @default(now())
-  ip_address   String?        @db.VarChar(45)
-  user_agent   String?        @db.Text
+model TeamActivityLog {
+  id Int @id @default(autoincrement())
 
-  employee Employee @relation(fields: [performed_by], references: [id])
+  entity_type     EntityType
+  entity_id       Int
+  entity_snapshot String?
+
+  action     ActivityAction
+  field_name String?
+
+  old_value String? @db.LongText
+  new_value String? @db.LongText
+
+  performed_by   Int
+  target_user_id Int?
+
+  performed_at  DateTime @default(now())
+  ip_address    String?  @db.VarChar(45)
+  device_info   String?  @db.Text
+  extra_payload Json?
+
+  // Relations
+  actor      Employee  @relation("ActorLog", fields: [performed_by], references: [id])
+  targetUser Employee? @relation("TargetLog", fields: [target_user_id], references: [id])
 
   @@index([entity_type, entity_id])
+  @@index([performed_by])
+  @@index([target_user_id])
+  @@index([performed_at])
 }

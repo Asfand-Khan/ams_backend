@@ -27,64 +27,64 @@ export async function testZkteco() {
     // Get users
 
 // //  // Add new user
-// await device.setUser(
-//   50,                    // uid: choose a unique number not used by any existing user
-//   "8",                  // userID: unique ID for this user
-//   "Muhammad Zain Ul Abidin",          // name
-//   "",                    // password (keep empty if not required)
-//   0,                     // role (0 = user, 14 = admin, etc.)
-//   0                      // cardno (if using card, put card number, else 0)
-// );
+await device.setUser(
+  81,                    // uid: choose a unique number not used by any existing user
+  "43",                  // userID: unique ID for this user
+  "Ebad ur Rahim",          // name
+  "33995",                    // password (keep empty if not required)
+  0,                     // role (0 = user, 14 = admin, etc.)
+  0                      // cardno (if using card, put card number, else 0)
+);
 
 // console.log("New user 'Syeda Khadija Naqvi' added successfully");
     // Get attendance logs
-    const attendanceResponse = await device.getAttendances();
-    const attendance = attendanceResponse.data || []; 
+    // const attendanceResponse = await device.getAttendances();
+    // const attendance = attendanceResponse.data || []; 
 
-    // Get today's date in local time
-    const today = new Date();
-    const todayDay = today.getDate();
-    const todayMonth = today.getMonth();
-    const todayYear = today.getFullYear();
+    // // Get today's date in local time
+    // const today = new Date();
+    // const todayDay = today.getDate();
+    // const todayMonth = today.getMonth();
+    // const todayYear = today.getFullYear();
 
-    const userLogsToday = attendance.filter((a: any) => {
-      const logDate = new Date(a.record_time);
-      return (
-        a.user_id === "27" ||  a.user_id === "27" &&
-        logDate.getDate() === todayDay &&
-        logDate.getMonth() === todayMonth &&
-        logDate.getFullYear() === todayYear
-      );
-    });
+    // const userLogsToday = attendance.filter((a: any) => {
+    //   const logDate = new Date(a.record_time);
+    //   return (
+    //     a.user_id === "27" ||  a.user_id === "27" &&
+    //     logDate.getDate() === todayDay &&
+    //     logDate.getMonth() === todayMonth &&
+    //     logDate.getFullYear() === todayYear
+    //   );
+    // });
 
-    console.log("Today's Attendance logs for user 44:", userLogsToday);
+    // console.log("Today's Attendance logs for user 44:", userLogsToday);
 
     
-//     const users = await device.getUsers();
-//     // console.log("Users:", users);
-// interface ZkUser {
-//   uid: number;
-//   userId: string;
-//   name: string;
-//   role: number;
-//   cardno: number;
-//   password: string;
-// }
+    const users = await device.getUsers();
+    // console.log("Users:", users);
+interface ZkUser {
+  uid: number;
+  userId: string;
+  name: string;
+  role: number;
+  cardno: number;
+  password: string;
+}
 
-// if (users && users.data && users.data.length > 0) {
-//   console.table(
-//     users.data.map((user: ZkUser) => ({
-//       UID: user.uid,
-//       UserID: user.userId,
-//       Name: user.name || "<empty>",
-//       Role: user.role,
-//       Password: user.password,
-//       CardNo: user.cardno
-//     }))
-//   );
-// } else {
-//   console.log("No users found on the device.");
-// }
+if (users && users.data && users.data.length > 0) {
+  console.table(
+    users.data.map((user: ZkUser) => ({
+      UID: user.uid,
+      UserID: user.userId,
+      Name: user.name || "<empty>",
+      Role: user.role,
+      Password: user.password,
+      CardNo: user.cardno
+    }))
+  );
+} else {
+  console.log("No users found on the device.");
+}
     // await device.clearAttendanceLog();
 
     await device.disconnect();

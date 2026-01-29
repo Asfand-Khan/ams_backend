@@ -1,8 +1,10 @@
+import prisma from "../config/db";
 import { NextFunction, Request, Response } from "express";
 import {
   employeeChangePasswordSchema,
   employeeProfileSchema,
   employeeSchema,
+  employeeUpdateAdminSchema,
   employeeUpdateProfileSchema,
 } from "../validations/employeeValidations";
 import {
@@ -17,7 +19,9 @@ import {
   getEmployeeByPhone,
   getEmployeeByUsername,
   getEmployeeProfileById,
+  updateEmployeeAdmin,
   updateEmployeeProfile,
+  updateEmployeeStatusAndSyncUser,
 } from "../services/employeeServices";
 import { comparePassword, getUserByEmployeeId } from "../services/authServices";
 import { handleAppError } from "../utils/appErrorHandler";
@@ -31,13 +35,13 @@ import { AuthRequest } from "../types/types";
 // Description --> Create employee
 export const createEmployeeHandler = async (
   req: AuthRequest,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const parsedEmployee = employeeSchema.parse(req.body);
 
     const employeeByCode = await getEmployeeByCode(
-      parsedEmployee.employee_code
+      parsedEmployee.employee_code,
     );
 
     if (employeeByCode) {
@@ -49,7 +53,7 @@ export const createEmployeeHandler = async (
     }
 
     const employeeByUsername = await getEmployeeByUsername(
-      parsedEmployee.username
+      parsedEmployee.username,
     );
 
     if (employeeByUsername) {
@@ -104,7 +108,7 @@ export const createEmployeeHandler = async (
           newEmployee.full_name,
           newEmployee.username,
           newEmployee.password,
-          "https://play.google.com/apps/internaltest/4701019820844510404"
+          "https://play.google.com/apps/internaltest/4701019820844510404",
         ),
       });
     }
@@ -126,7 +130,7 @@ export const createEmployeeHandler = async (
 
 export const changeEmployeePasswordHandler = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const parsedData = employeeChangePasswordSchema.parse(req.body);
@@ -151,7 +155,7 @@ export const changeEmployeePasswordHandler = async (
 
     const isPasswordValid = comparePassword(
       parsedData.old_password,
-      user.password_hash
+      user.password_hash,
     );
     if (!isPasswordValid) {
       return res.status(400).json({
@@ -180,7 +184,7 @@ export const changeEmployeePasswordHandler = async (
 
 export const getEmployeeProfileHandler = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const parsedData = employeeProfileSchema.parse(req.body);
@@ -211,7 +215,7 @@ export const getEmployeeProfileHandler = async (
 
 export const updateEmployeeProfileHandler = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const parsedData = employeeUpdateProfileSchema.parse(req.body);
@@ -245,7 +249,7 @@ export const updateEmployeeProfileHandler = async (
 export const getAllEmployeesHandler = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
     // Ensure user is attached by authentication middleware
@@ -276,10 +280,9 @@ export const getAllEmployeesHandler = async (
 export const getAllUsersHandler = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) => {
   try {
-    // Ensure user is attached by authentication middleware
     if (!req.userRecord) {
       return res.status(401).json({
         status: 0,
@@ -295,8 +298,137 @@ export const getAllUsersHandler = async (
       payload: employees,
     });
   } catch (error) {
-    const err = handleAppError(error); 
+    const err = handleAppError(error);
     return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// PUT /api/v1/employees/:id
+export const updateEmployeeHandler = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<any> => {
+  try {
+    const employeeId = Number(req.params.id);
+    if (isNaN(employeeId)) {
+      return res.status(400).json({
+        status: 0,
+        message: "Invalid employee ID",
+        payload: [],
+      });
+    }
+
+    const parsedData = employeeUpdateAdminSchema.parse({
+      ...req.body,
+      employee_id: employeeId,
+    });
+    const currentUser = await prisma.user.findFirst({
+      where: {
+        employee_id: req.userRecord?.id,
+      },
+      select: {
+        type: true,
+      },
+    });
+
+    if (!currentUser) {
+      return res.status(403).json({
+        status: 0,
+        message: "No user account found for the current logged-in employee",
+        payload: [],
+      });
+    }
+
+    if (!["admin", "hr","lead"].includes(currentUser.type)) {
+      return res.status(403).json({
+        status: 0,
+        message: "Unauthorized: Only admin or HR can update employees",
+        payload: [],
+      });
+    }
+
+    const updatedEmployee = await updateEmployeeAdmin(parsedData);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Employee updated successfully",
+      payload: [updatedEmployee],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status || 500).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// PUT /api/v1/employees/:id/status
+export const updateEmployeeStatusHandler = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<any> => {
+  try {
+    const employeeId = Number(req.params.id);
+    if (isNaN(employeeId)) {
+      return res.status(400).json({
+        status: 0,
+        message: "Invalid employee ID",
+        payload: [],
+      });
+    }
+
+    const { status } = req.body;
+
+    if (!["active", "inactive", "terminated"].includes(status)) {
+      return res.status(400).json({
+        status: 0,
+        message: "Invalid status. Allowed: active, inactive, terminated",
+        payload: [],
+      });
+    }
+    const requestingUser = await prisma.user.findFirst({
+      where: {
+        employee_id: req.userRecord?.id,
+      },
+      select: {
+        type: true,
+      },
+    });
+
+    if (!requestingUser) {
+      return res.status(403).json({
+        status: 0,
+        message: "No user account found for the current logged-in employee",
+        payload: [],
+      });
+    }
+
+    if (!["admin", "hr","lead"].includes(requestingUser.type)) {
+      return res.status(403).json({
+        status: 0,
+        message: "Only admin or HR can change employee status",
+        payload: [],
+      });
+    }
+    const updatedData = await updateEmployeeStatusAndSyncUser(
+      employeeId,
+      status as "active" | "inactive" | "terminated",
+    );
+
+    return res.status(200).json({
+      status: 1,
+      message: `Employee status updated to ${status} successfully`,
+      payload: [updatedData],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status || 500).json({
       status: 0,
       message: err.message,
       payload: [],

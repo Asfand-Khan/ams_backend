@@ -7,6 +7,7 @@ import { generateRandomHex } from "../utils/generateRandomHex";
 import {
   Employee,
   EmployeeUpdate,
+  EmployeeUpdateAdmin,
   EmployeeUpdateProfile,
 } from "../validations/employeeValidations";
 
@@ -139,7 +140,7 @@ export const createEmployee = async (employee: Employee) => {
           can_delete: right.can_delete ?? false,
         }));
 
-        await prisma.userMenuRight.createMany({
+        await tx.userMenuRight.createMany({
           data: menuRightsData,
         });
       }
@@ -179,7 +180,7 @@ export const createEmployee = async (employee: Employee) => {
     },
     {
       timeout: 30000,
-    }
+    },
   );
 
   return result;
@@ -270,7 +271,7 @@ export const getEmployeeById = async (id: number) => {
 
 export const changeEmployeePassword = async (
   user_id: number,
-  new_password: string
+  new_password: string,
 ) => {
   return prisma.user.update({
     where: { id: user_id },
@@ -355,14 +356,14 @@ export const updateEmployeeProfile = async (data: EmployeeUpdateProfile) => {
 
   if (data.profile_picture) {
     const { image: imageBase64, extension } = extractImageAndExtension(
-      data.profile_picture
+      data.profile_picture,
     );
     employeeData.profile_picture = `${new Date().getTime()}.${extension}`;
     const customDirectory = "uploads/users";
     const { success } = await saveBase64Image(
       imageBase64,
       employeeData.profile_picture,
-      customDirectory
+      customDirectory,
     );
     if (!success) throw new Error("Failed to save user image");
   }
@@ -457,6 +458,16 @@ export const getAllUsersWithEmployee = async (user: any) => {
               title: true,
             },
           },
+          TeamMember: {
+            where: { is_active: true, is_deleted: false },
+            select: { team: { select: { name: true } } },
+          },
+          EmployeeShift: {
+            where: { is_active: true, is_deleted: false },
+            orderBy: { effective_from: "desc" },
+            take: 1,
+            select: { shift: { select: { name: true } } },
+          },
         },
       },
     },
@@ -505,7 +516,248 @@ export const getAllUsersWithEmployee = async (user: any) => {
           updated_at: user.employee.updated_at.toISOString(),
           department: user.employee.department,
           designation: user.employee.designation,
+          teams: user.employee?.TeamMember.length
+            ? user.employee.TeamMember.map((tm) => tm.team.name).join(", ")
+            : null,
+          current_shift: user.employee?.EmployeeShift[0]?.shift.name || null,
         }
       : null,
   }));
+};
+export const updateEmployeeAdmin = async (data: EmployeeUpdateAdmin) => {
+  return prisma.$transaction(async (tx) => {
+    const employee = await tx.employee.findUnique({
+      where: { id: data.employee_id },
+      include: {
+        User: { select: { id: true, email: true, username: true } },
+      },
+    });
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+
+    const userId = employee.User?.[0]?.id;
+    if (!userId) {
+      throw new Error("No associated user account found for this employee");
+    }
+    if (data.employee_code && data.employee_code !== employee.employee_code) {
+      const exists = await tx.employee.findUnique({
+        where: { employee_code: data.employee_code },
+      });
+      if (exists) throw new Error("Employee code already in use");
+    }
+
+    if (data.email && data.email !== employee.email) {
+      const exists = await tx.employee.findUnique({
+        where: { email: data.email },
+      });
+      if (exists) throw new Error("Email already in use");
+    }
+
+    if (data.phone && data.phone !== employee.phone) {
+      const exists = await tx.employee.findUnique({
+        where: { phone: data.phone },
+      });
+      if (exists) throw new Error("Phone already in use");
+    }
+
+    if (data.cnic && data.cnic !== employee.cnic) {
+      const exists = await tx.employee.findUnique({
+        where: { cnic: data.cnic },
+      });
+      if (exists) throw new Error("CNIC already in use");
+    }
+    const employeeUpdateData: any = {};
+
+    if (data.employee_code !== undefined)
+      employeeUpdateData.employee_code = data.employee_code;
+    if (data.full_name !== undefined)
+      employeeUpdateData.full_name = data.full_name;
+    if (data.father_name !== undefined)
+      employeeUpdateData.father_name = data.father_name;
+    if (data.email !== undefined) employeeUpdateData.email = data.email;
+    if (data.phone !== undefined) employeeUpdateData.phone = data.phone;
+    if (data.cnic !== undefined) employeeUpdateData.cnic = data.cnic;
+    if (data.gender !== undefined) employeeUpdateData.gender = data.gender;
+    if (data.dob !== undefined)
+      employeeUpdateData.dob = data.dob ? new Date(data.dob) : null;
+    if (data.join_date !== undefined)
+      employeeUpdateData.join_date = data.join_date
+        ? new Date(data.join_date)
+        : null;
+    if (data.leave_date !== undefined)
+      employeeUpdateData.leave_date = data.leave_date
+        ? new Date(data.leave_date)
+        : null;
+    if (data.address !== undefined) employeeUpdateData.address = data.address;
+    if (data.department_id !== undefined)
+      employeeUpdateData.department_id = data.department_id;
+    if (data.designation_id !== undefined)
+      employeeUpdateData.designation_id = data.designation_id;
+    if (data.status !== undefined) employeeUpdateData.status = data.status;
+    if (data.profile_picture) {
+      const { image: base64Image, extension } = extractImageAndExtension(
+        data.profile_picture,
+      );
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${extension}`;
+      const { success } = await saveBase64Image(
+        base64Image,
+        filename,
+        "uploads/users",
+      );
+      if (!success) throw new Error("Failed to save profile picture");
+      employeeUpdateData.profile_picture = filename;
+    }
+    const updatedEmployee = await tx.employee.update({
+      where: { id: data.employee_id },
+      data: employeeUpdateData,
+    });
+    if (data.email) {
+      await tx.user.update({
+        where: { id: userId },
+        data: { email: data.email },
+      });
+    }
+    if (data.shift_id) {
+      await tx.employeeShift.updateMany({
+        where: { employee_id: data.employee_id, is_active: true },
+        data: { is_active: false },
+      });
+
+      await tx.employeeShift.create({
+        data: {
+          employee_id: data.employee_id,
+          shift_id: data.shift_id,
+          effective_from: new Date(),
+          is_active: true,
+        },
+      });
+    }
+    if (data.team_id !== undefined) {
+      await tx.teamMember.updateMany({
+        where: { employee_id: data.employee_id, is_active: true },
+        data: { is_active: false, is_deleted: true },
+      });
+
+      if (data.team_id) {
+        await tx.teamMember.create({
+          data: {
+            team_id: data.team_id,
+            employee_id: data.employee_id,
+            assigned_at: new Date(),
+            is_active: true,
+          },
+        });
+      }
+    }
+    if (data.user_rights && data.user_rights.length > 0) {
+      const menuIds = data.user_rights.map((r) => r.menu_id);
+      const existingMenus = await tx.menu.findMany({
+        where: { id: { in: menuIds } },
+        select: { id: true },
+      });
+
+      const existingMenuIds = new Set(existingMenus.map((m) => m.id));
+      const invalidMenuIds = menuIds.filter((id) => !existingMenuIds.has(id));
+
+      if (invalidMenuIds.length > 0) {
+        throw new Error(
+          `Invalid menu IDs: ${invalidMenuIds.join(", ")}. These menus do not exist.`,
+        );
+      }
+      if (data.replace_all_rights) {
+        await tx.userMenuRight.deleteMany({ where: { user_id: userId } });
+      }
+      for (const right of data.user_rights) {
+        await tx.userMenuRight.upsert({
+          where: {
+            user_id_menu_id: {
+              user_id: userId,
+              menu_id: right.menu_id,
+            },
+          },
+          update: {
+            can_view: right.can_view ?? true,
+            can_create: right.can_create ?? false,
+            can_edit: right.can_edit ?? false,
+            can_delete: right.can_delete ?? false,
+          },
+          create: {
+            user_id: userId,
+            menu_id: right.menu_id,
+            can_view: right.can_view ?? true,
+            can_create: right.can_create ?? false,
+            can_edit: right.can_edit ?? false,
+            can_delete: right.can_delete ?? false,
+          },
+        });
+      }
+    }
+
+    return updatedEmployee;
+  });
+};
+export const updateEmployeeStatusAndSyncUser = async (
+  employeeId: number,
+  newStatus: "active" | "inactive" | "terminated",
+) => {
+  return prisma.$transaction(async (tx) => {
+    const employee = await tx.employee.findUnique({
+      where: { id: employeeId },
+      include: {
+        User: {
+          select: {
+            id: true,
+          },
+        },
+      },
+    });
+
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const employeeUpdateData: any = {
+      status: newStatus,
+      updated_at: today,
+    };
+
+    if (newStatus === "inactive" || newStatus === "terminated") {
+      if (!employee.leave_date) {
+        employeeUpdateData.leave_date = today;
+      }
+    } else if (newStatus === "active") {
+      employeeUpdateData.leave_date = null;
+    }
+    employeeUpdateData.is_active = newStatus === "active";
+    const updatedEmployee = await tx.employee.update({
+      where: { id: employeeId },
+      data: employeeUpdateData,
+      select: {
+        id: true,
+        employee_code: true,
+        full_name: true,
+        status: true,
+        leave_date: true,
+        updated_at: true,
+      },
+    });
+    const userShouldBeActive = newStatus === "active";
+    if (employee.User?.[0]) {
+      await tx.user.update({
+        where: { id: employee.User[0].id },
+        data: {
+          is_active: userShouldBeActive,
+          updated_at: today,
+        },
+      });
+    }
+    return {
+      ...updatedEmployee,
+      is_active: userShouldBeActive,
+    };
+  });
 };

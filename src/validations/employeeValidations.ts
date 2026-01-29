@@ -237,6 +237,40 @@ export const employeeUpdateProfileSchema = z.object({
     .optional(),
 });
 
+export const employeeUpdateAdminSchema = z.object({
+  employee_id: z.number().int().positive(),
+
+  employee_code: z.string().min(3).max(20).optional(),
+  full_name: z.string().min(2).max(100).optional(),
+  father_name: z.string().max(100).optional().nullable(),
+  email: z.string().email().optional(),
+  phone: z.string().max(20).optional().nullable(),
+  cnic: z.string().max(20).optional().nullable(),
+  gender: z.enum(["male", "female"]).optional().nullable(),
+  dob: z.string().datetime().optional().nullable(),
+  join_date: z.string().datetime().optional().nullable(),
+  leave_date: z.string().datetime().optional().nullable(),
+  address: z.string().optional().nullable(),
+  department_id: z.number().int().positive().optional(),
+  designation_id: z.number().int().positive().optional(),
+  status: z.enum(["active", "inactive", "terminated"]).optional(),
+  profile_picture: z.string().optional(), // base64 string
+  shift_id: z.number().int().positive().optional(),
+  team_id: z.number().int().positive().optional(),
+  user_rights: z
+    .array(
+      z.object({
+        menu_id: z.number().int().positive(),
+        can_view: z.boolean().optional().default(true),
+        can_create: z.boolean().optional().default(false),
+        can_edit: z.boolean().optional().default(false),
+        can_delete: z.boolean().optional().default(false),
+      })
+    )
+    .optional(),
+  replace_all_rights: z.boolean().optional().default(false),
+});
+
 export type Employee = z.infer<typeof employeeSchema>;
 export type EmployeeUpdate = z.infer<typeof employeeUpdateSchema>;
 export type EmployeeChangePassword = z.infer<
@@ -244,3 +278,4 @@ export type EmployeeChangePassword = z.infer<
 >;
 export type EmployeeProfile = z.infer<typeof employeeProfileSchema>;
 export type EmployeeUpdateProfile = z.infer<typeof employeeUpdateProfileSchema>;
+export type EmployeeUpdateAdmin = z.infer<typeof employeeUpdateAdminSchema>;

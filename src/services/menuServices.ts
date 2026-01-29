@@ -24,7 +24,7 @@ type MenuOutput = {
 };
 
 type ChildItem = {
-  id: number;
+   menu_id: number; 
   name: string;
   url: string;
   icon: string | null;
@@ -60,7 +60,7 @@ function transformMenu(flatMenu: MenuItem[]): MenuOutput[] {
 
     if (parent_id !== null && menuMap[parent_id]) {
       menuMap[parent_id].childs.push({
-        id,
+        menu_id : id,
         name,
         url,
         icon,
