@@ -1,5 +1,4 @@
 import { NextFunction, Request, Response } from "express";
-import dayjs from "dayjs";
 import {
   attendanceByDateSchema,
   attendanceByIdSchema,
@@ -39,18 +38,11 @@ import { AuthRequest } from "../types/types";
 // Description --> Mark the check-in of the employee
 export const checkInHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
-    const body = checkInSchema.parse(req.body);
-    const serverDate = dayjs().format("YYYY-MM-DD");
-    const serverTime = dayjs().format("HH:mm:ss");
-    const parsedData = {
-      ...body,
-      attendance_date: serverDate,
-      check_in_time: serverTime,
-    };
-    // const parsedData = checkInSchema.parse(req.body);
+    const parsedData = checkInSchema.parse(req.body);
+
     const employee = await getEmployeeById(parsedData.employee_id);
     if (!employee) {
       return res.status(404).json({
@@ -62,7 +54,7 @@ export const checkInHandler = async (
 
     const attendanceExists = await ifCheckInExists(
       parsedData.employee_id,
-      parsedData.attendance_date,
+      parsedData.attendance_date
     );
 
     if (attendanceExists !== null) {
@@ -78,7 +70,7 @@ export const checkInHandler = async (
     const checkInStatus = await getCheckInStatus(
       parsedData.check_in_time,
       shift.start_time,
-      shift.grace_minutes,
+      shift.grace_minutes
     );
 
     const attendance = await markCheckIn(parsedData, checkInStatus);
@@ -103,17 +95,11 @@ export const checkInHandler = async (
 // Description --> Mark the check-out of the employee
 export const checkOutHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
-    const body = checkOutSchema.parse(req.body);
-    const serverDate = dayjs().format("YYYY-MM-DD");
-    const serverTime = dayjs().format("HH:mm:ss");
-    const parsedData = {
-      ...body,
-      attendance_date: serverDate,
-      check_out_time: serverTime,
-    };
+    const parsedData = checkOutSchema.parse(req.body);
+
     const employee = await getEmployeeById(parsedData.employee_id);
     if (!employee) {
       return res.status(404).json({
@@ -125,7 +111,7 @@ export const checkOutHandler = async (
 
     const attendance = await getEmployeeAttendance(
       parsedData.employee_id,
-      parsedData.attendance_date,
+      parsedData.attendance_date
     );
 
     if (attendance == null) {
@@ -134,7 +120,7 @@ export const checkOutHandler = async (
 
     const work_status = await getWorkStatus(
       attendance.check_in_time,
-      parsedData.check_out_time,
+      parsedData.check_out_time
     );
 
     const data = {
@@ -166,13 +152,13 @@ export const checkOutHandler = async (
 // Description --> Fetch the single attendance
 export const getSingleAttendanceHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
     const parsedData = singleAttendanceSchema.parse(req.body);
     const attendance = await singleAttendance(
       parsedData.employee_id,
-      parsedData.attendance_date,
+      parsedData.attendance_date
     );
 
     if (!attendance) {
@@ -204,14 +190,14 @@ export const getSingleAttendanceHandler = async (
 // Description --> Fetch attendance summary
 export const getAttendanceSummaryHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
     const parsedData = attendanceSummarySchema.parse(req.body);
     const attSummary = await attendanceSummary(
       parsedData.employee_id,
       parsedData.start_date,
-      parsedData.end_date,
+      parsedData.end_date
     );
 
     return res.status(200).json({
@@ -235,7 +221,7 @@ export const getAttendanceSummaryHandler = async (
 // Description --> Fetch the attendance
 export const getAttendanceHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
     const parsedData = attendanceSchema.parse(req.body);
@@ -267,176 +253,80 @@ export const getAttendanceHandler = async (
 // Method --> POST (Protected)
 // Endpoint --> /api/v1/attendances/add
 // Description --> Add attendance
-// export const addAttendanceHandler = async (
-//   req: Request,
-//   res: Response,
-// ): Promise<any> => {
-//   try {
-//     const parsedData = createAttendanceSchema.parse(req.body);
-
-//     if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
-//       throw new Error(
-//         "Check in and check out time can not be null at the same time, one should atleast be provided.",
-//       );
-//     }
-//     if (parsedData.check_out_time) {
-//       if (parsedData.check_in_time == null) {
-//         throw new Error(
-//           "Check in time can not be null when check out time is provided.",
-//         );
-//       }
-//     }
-
-//     const employee = await getEmployeeById(parsedData.employee_id);
-//     if (!employee) {
-//       return res.status(400).json({
-//         status: 0,
-//         message: "Employee not found",
-//         payload: [],
-//       });
-//     }
-
-//     const attendanceExists = await singleAttendance(
-//       parsedData.employee_id,
-//       parsedData.attendance_date,
-//     );
-
-//     if (attendanceExists !== null) {
-//       throw new Error("Attendance already exists");
-//     }
-
-//     const shift = await getEmployeeShift(parsedData.employee_id);
-//     if (!shift) {
-//       throw new Error("Shift not found");
-//     }
-
-//     let check_in_status = null;
-//     if (parsedData.check_in_time) {
-//       check_in_status = await getCheckInStatus(
-//         parsedData.check_in_time,
-//         shift.start_time,
-//         shift.grace_minutes,
-//       );
-//     }
-
-//     let work_status = null;
-//     if (parsedData.check_in_time && parsedData.check_out_time) {
-//       work_status = await getWorkStatus(
-//         parsedData.check_in_time,
-//         parsedData.check_out_time,
-//       );
-//     }
-
-//     const attendance = await addAttendance(
-//       parsedData,
-//       work_status,
-//       check_in_status,
-//     );
-
-//     return res.status(200).json({
-//       status: 1,
-//       message: "Added attendance successfully",
-//       payload: [attendance],
-//     });
-//   } catch (error) {
-//     const err = handleAppError(error);
-//     return res.status(err.status).json({
-//       status: 0,
-//       message: err.message,
-//       payload: [],
-//     });
-//   }
-// };
 export const addAttendanceHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
     const parsedData = createAttendanceSchema.parse(req.body);
+
     if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
       throw new Error(
-        "Check in and check out time cannot both be null — at least one is required.",
+        "Check in and check out time can not be null at the same time, one should atleast be provided."
       );
     }
-    if (parsedData.check_out_time && parsedData.check_in_time == null) {
-      throw new Error(
-        "Check in time is required when check out time is provided.",
-      );
+    if (parsedData.check_out_time) {
+      if (parsedData.check_in_time == null) {
+        throw new Error(
+          "Check in time can not be null when check out time is provided."
+        );
+      }
     }
 
     const employee = await getEmployeeById(parsedData.employee_id);
     if (!employee) {
-      return res.status(404).json({
+      return res.status(400).json({
         status: 0,
         message: "Employee not found",
         payload: [],
       });
     }
-    const existingAttendance = await singleAttendance(
+
+    const attendanceExists = await singleAttendance(
       parsedData.employee_id,
-      parsedData.attendance_date,
+      parsedData.attendance_date
     );
+
+    if (attendanceExists !== null) {
+      throw new Error("Attendance already exists");
+    }
 
     const shift = await getEmployeeShift(parsedData.employee_id);
     if (!shift) {
-      throw new Error("Shift not found for this employee");
+      throw new Error("Shift not found");
     }
 
-    let check_in_status: "on_time" | "late" | null = null;
+    let check_in_status = null;
     if (parsedData.check_in_time) {
       check_in_status = await getCheckInStatus(
         parsedData.check_in_time,
         shift.start_time,
-        shift.grace_minutes,
+        shift.grace_minutes
       );
     }
 
-    let work_status: any = null;
+    let work_status = null;
     if (parsedData.check_in_time && parsedData.check_out_time) {
       work_status = await getWorkStatus(
         parsedData.check_in_time,
-        parsedData.check_out_time,
+        parsedData.check_out_time
       );
     }
 
-    let finalAttendance;
+    const attendance = await addAttendance(
+      parsedData,
+      work_status,
+      check_in_status
+    );
 
-    if (existingAttendance) {
-      finalAttendance = await updateAttendance(
-        {
-          attendance_id: existingAttendance.id,
-          attendance_date: parsedData.attendance_date,
-          check_in_time: parsedData.check_in_time,
-          check_out_time: parsedData.check_out_time,
-        },
-        work_status,
-        check_in_status,
-        // work_from_home: parsedData.work_from_home, 
-      );
-
-      return res.status(200).json({
-        status: 1,
-        message: "Attendance updated successfully (record already existed)",
-        payload: [finalAttendance],
-      });
-    } else {
-      // CREATE new record
-      finalAttendance = await addAttendance(
-        parsedData,
-        work_status,
-        check_in_status,
-        // parsedData.work_from_home
-      );
-
-      return res.status(201).json({
-        status: 1,
-        message: "Attendance added successfully",
-        payload: [finalAttendance],
-      });
-    }
+    return res.status(200).json({
+      status: 1,
+      message: "Added attendance successfully",
+      payload: [attendance],
+    });
   } catch (error) {
     const err = handleAppError(error);
-    return res.status(err.status || 400).json({
+    return res.status(err.status).json({
       status: 0,
       message: err.message,
       payload: [],
@@ -449,19 +339,19 @@ export const addAttendanceHandler = async (
 // Description --> Update attendance
 export const updateAttendanceHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
     const parsedData = updateAttendanceSchema.parse(req.body);
     if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
       throw new Error(
-        "Check in and check out time can not be null at the same time, one should atleast be provided.",
+        "Check in and check out time can not be null at the same time, one should atleast be provided."
       );
     }
     if (parsedData.check_out_time) {
       if (parsedData.check_in_time == null) {
         throw new Error(
-          "Check in time can not be null when check out time is provided.",
+          "Check in time can not be null when check out time is provided."
         );
       }
     }
@@ -485,7 +375,7 @@ export const updateAttendanceHandler = async (
       check_in_status = await getCheckInStatus(
         parsedData.check_in_time,
         shift.start_time,
-        shift.grace_minutes,
+        shift.grace_minutes
       );
     }
 
@@ -493,14 +383,14 @@ export const updateAttendanceHandler = async (
     if (parsedData.check_in_time && parsedData.check_out_time) {
       work_status = await getWorkStatus(
         parsedData.check_in_time,
-        parsedData.check_out_time,
+        parsedData.check_out_time
       );
     }
 
     const updatedAttendance = await updateAttendance(
       parsedData,
       work_status,
-      check_in_status,
+      check_in_status
     );
 
     return res.status(200).json({
@@ -524,7 +414,7 @@ export const updateAttendanceHandler = async (
 export const getAttendanceByDateHandler = async (
   req: AuthRequest,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<any> => {
   try {
     // Validate request body
@@ -558,7 +448,7 @@ export const getAttendanceByDateHandler = async (
 // Description --> Update attendance
 export const getAttendanceByIdHandler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
     const parsedData = attendanceByIdSchema.parse(req.body);
@@ -594,7 +484,7 @@ export const getAttendanceByIdHandler = async (
 export const getDailyAttendanceSummaryHandler = async (
   req: AuthRequest, // Updated to use AuthRequest
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<any> => {
   try {
     // Ensure user is attached by authentication middleware
@@ -629,14 +519,14 @@ export const getDailyAttendanceSummaryHandler = async (
 // Description --> Fetch attendance summary
 export const getAttendanceSummaryV2Handler = async (
   req: Request,
-  res: Response,
+  res: Response
 ): Promise<any> => {
   try {
     const parsedData = attendanceSummarySchema.parse(req.body);
     const attSummary = await attendanceSummaryV2(
       parsedData.employee_id,
       parsedData.start_date,
-      parsedData.end_date,
+      parsedData.end_date
     );
 
     return res.status(200).json({

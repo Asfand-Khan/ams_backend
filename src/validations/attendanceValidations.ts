@@ -19,6 +19,16 @@ export const checkInSchema = z.object({
     .number({ required_error: "Employee ID is required" })
     .int("Employee ID must be an integer")
     .positive("Employee ID must be a positive number"),
+
+  attendance_date: z
+    .string({ required_error: "Attendance date is required" })
+    .regex(dateRegex, "Attendance date must be in 'YYYY-MM-DD' format")
+    .refine(isValidPastOrTodayDate, "Attendance date cannot be in the future"),
+
+  check_in_time: z
+    .string({ required_error: "Check-in time is required" })
+    .regex(timeRegex, "Check-in time must be in 'HH:mm:ss' 24-hour format"),
+
   check_in_office_location: z
     .number({ required_error: "Check-in office location is required" })
     .int("Check-in office location must be an integer")
@@ -30,7 +40,16 @@ export const checkOutSchema = z.object({
     .number({ required_error: "Employee ID is required" })
     .int("Employee ID must be an integer")
     .positive("Employee ID must be a positive number"),
-    
+
+  attendance_date: z
+    .string({ required_error: "Attendance date is required" })
+    .regex(dateRegex, "Attendance date must be in 'YYYY-MM-DD' format")
+    .refine(isValidPastOrTodayDate, "Attendance date cannot be in the future"),
+
+  check_out_time: z
+    .string({ required_error: "Check-in time is required" })
+    .regex(timeRegex, "Check-in time must be in 'HH:mm:ss' 24-hour format"),
+
   check_out_office_location: z
     .number({ required_error: "Check-out office location is required" })
     .int("Check-out office location must be an integer")
