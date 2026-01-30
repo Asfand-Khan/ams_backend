@@ -15,14 +15,12 @@ import { getCheckInStatus } from "../utils/getCheckInStatus";
 import { getWorkStatus } from "../utils/getWorkStatusAndHours";
 import { sendEmail } from "../utils/sendEmail";
 import { getEmployeeByEmail, getEmployeeById } from "./employeeServices";
-import {
-  getAttendanceCorrectionRequestTemplate,
-} from "../utils/attendanceCorrectionRequestTemplate";
+import { getAttendanceCorrectionRequestTemplate } from "../utils/attendanceCorrectionRequestTemplate";
 import { format } from "date-fns-tz";
 
 export const createAttendanceCorrection = async (
   data: AttendanceCorrectionCreate,
-  attendance: Attendance | null
+  attendance: Attendance | null,
 ) => {
   const correction = await prisma.attendanceCorrectionRequest.create({
     data: {
@@ -65,9 +63,9 @@ export const createAttendanceCorrection = async (
     await sendEmail({
       to: emp.employee_email,
       subject: `Orio Connect`,
-      cc: [emp.hr_email, emp.team_lead_email], 
+      cc: [emp.hr_email, emp.team_lead_email],
       html: getAttendanceCorrectionRequestTemplate({
-        full_name : emp.full_name,
+        full_name: emp.full_name,
         attendance_date: data.attendance_date,
         reason: data.reason,
         request_type: data.request_type,
@@ -88,7 +86,7 @@ export const createAttendanceCorrection = async (
 
 export const attendanceCorrectionListing = async (
   data: AttendanceCorrectionListing,
-  user: any
+  user: any,
 ) => {
   // Base where clause
   let whereClause: any = {};
@@ -114,7 +112,7 @@ export const attendanceCorrectionListing = async (
     if (employeeExists) {
       whereClause["employee_id"] = data.employee_id;
     } else {
-      return []; 
+      return [];
     }
   } else {
     const userRecord = await prisma.user.findFirst({
@@ -145,7 +143,7 @@ export const attendanceCorrectionListing = async (
       const employeeIds = teamMembers.map((member) => member.employee_id);
 
       if (employeeIds.length === 0) {
-        return []; 
+        return [];
       }
 
       // Restrict to team members
@@ -153,9 +151,9 @@ export const attendanceCorrectionListing = async (
         in: employeeIds,
       };
     }
-     if (userType === "employee") {
-    whereClause.employee_id = user.id;
-  } 
+    if (userType === "employee") {
+      whereClause.employee_id = user.id;
+    }
   }
 
   const correction = await prisma.attendanceCorrectionRequest.findMany({
@@ -164,7 +162,7 @@ export const attendanceCorrectionListing = async (
       employee: {
         select: {
           full_name: true,
-          profile_picture : true
+          profile_picture: true,
         },
       },
       reviewer: {
@@ -183,7 +181,7 @@ export const attendanceCorrectionListing = async (
   }));
 };
 export const attendanceCorrectionSingle = async (
-  data: SingleAttendanceCorrection
+  data: SingleAttendanceCorrection,
 ) => {
   const correctionSingle = await prisma.attendanceCorrectionRequest.findUnique({
     where: {
@@ -208,7 +206,7 @@ export const attendanceCorrectionSingle = async (
 
 export const attendanceCorrectionRejectApprove = async (
   data: ApproveRejectAttendanceCorrection,
-  reviewed_by: number
+  reviewed_by: number,
 ) => {
   const result = await prisma.$transaction(async (tx) => {
     const correction = await tx.attendanceCorrectionRequest.findUnique({
@@ -244,7 +242,7 @@ export const attendanceCorrectionRejectApprove = async (
         status: data.status,
         remarks: data.remarks,
         reviewed_on: new Date(),
-        reviewed_by: reviewed_by ,
+        reviewed_by: reviewed_by,
       },
     });
   } else {
@@ -258,20 +256,37 @@ export const attendanceCorrectionRejectApprove = async (
       check_in_status = await getCheckInStatus(
         correction.requested_check_in,
         shift.start_time,
-        shift.grace_minutes
+        shift.grace_minutes,
       );
     }
 
+    // let work_status = null;
+    // if (correction.requested_check_out) {
+    //   work_status = await getWorkStatus(
+    //     correction.requested_check_in
+    //       ? correction.requested_check_in
+    //       : correction.original_check_in,
+    //     correction.requested_check_out
+    //   );
+    // }
     let work_status = null;
-    if (correction.requested_check_out) {
-      work_status = await getWorkStatus(
-        correction.requested_check_in
-          ? correction.requested_check_in
-          : correction.original_check_in,
-        correction.requested_check_out
-      );
-    }
 
+    // final check-in
+    const finalCheckIn =
+      correction.requested_check_in ??
+      attendance?.check_in_time ??
+      correction.original_check_in;
+
+    // final check-out
+    const finalCheckOut =
+      correction.requested_check_out ??
+      attendance?.check_out_time ??
+      correction.original_check_out;
+
+    // calculate hours if both exist
+    if (finalCheckIn && finalCheckOut) {
+      work_status = await getWorkStatus(finalCheckIn, finalCheckOut);
+    }
     if (attendance === null) {
       // Add Attendance Here
       await addAttendance(
@@ -283,7 +298,7 @@ export const attendanceCorrectionRejectApprove = async (
         },
         work_status,
         check_in_status,
-        correction.request_type === "work_from_home" ? true : false
+        correction.request_type === "work_from_home" ? true : false,
       );
     } else {
       // Update Attendance Here
@@ -296,7 +311,7 @@ export const attendanceCorrectionRejectApprove = async (
         },
         work_status,
         check_in_status,
-        correction.request_type === "work_from_home" ? true : false
+        correction.request_type === "work_from_home" ? true : false,
       );
     }
 
@@ -336,13 +351,14 @@ export const attendanceCorrectionRejectApprove = async (
   }[];
 
   if (employee.length === 0) throw new Error("Employee not found");
-const status = updatedCorrection.status; 
-const capitalizedStatus = status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
+  const status = updatedCorrection.status;
+  const capitalizedStatus =
+    status.charAt(0).toUpperCase() + status.slice(1).toLowerCase();
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
       subject: `Orio Connect - Attendance Correction ${capitalizedStatus}`,
-      cc: [emp.hr_email, emp.team_lead_email], 
+      cc: [emp.hr_email, emp.team_lead_email],
       html: getAttendanceCorrectionRequestTemplate({
         attendance_date: updatedCorrection.attendance_date,
         reason: updatedCorrection.reason,
