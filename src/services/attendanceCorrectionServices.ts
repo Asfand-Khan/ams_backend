@@ -270,20 +270,14 @@ export const attendanceCorrectionRejectApprove = async (
     //   );
     // }
     let work_status = null;
-
-    // final check-in
     const finalCheckIn =
       correction.requested_check_in ??
       attendance?.check_in_time ??
       correction.original_check_in;
-
-    // final check-out
     const finalCheckOut =
       correction.requested_check_out ??
       attendance?.check_out_time ??
       correction.original_check_out;
-
-    // calculate hours if both exist
     if (finalCheckIn && finalCheckOut) {
       work_status = await getWorkStatus(finalCheckIn, finalCheckOut);
     }

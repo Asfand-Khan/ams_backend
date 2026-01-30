@@ -62,7 +62,7 @@ export const ifCheckInExists = async (
 };
 
 export const markCheckIn = async (
-  data: CheckIn,
+  data: any,
   checkInStatus: "on_time" | "late"
 ) => {
   const attendance = await prisma.attendance.create({
