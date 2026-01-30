@@ -72,11 +72,25 @@ export const getAllEmployees = async (user: any) => {
       is_deleted: true,
       created_at: true,
       updated_at: true,
+      EmployeeShift: {
+        select: { shift_id: true },
+        where: { is_active: true, is_deleted: false },
+        orderBy: { effective_from: "desc" },
+        take: 1,
+      },
+      TeamMember: {
+        select: { team_id: true },
+        where: { is_active: true, is_deleted: false },
+      },
     },
   });
   return allEmployees.map((employee) => ({
     ...employee,
     id: employee.id,
+    shift_id: employee.EmployeeShift[0]?.shift_id || null,
+    team_ids: employee.TeamMember.map((tm) => tm.team_id),
+    EmployeeShift: undefined,
+    TeamMember: undefined,
   }));
 };
 
