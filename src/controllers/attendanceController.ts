@@ -354,78 +354,74 @@ export const addAttendanceHandler = async (
   try {
     const parsedData = createAttendanceSchema.parse(req.body);
     if (parsedData.check_in_time == null && parsedData.check_out_time == null) {
-      throw new Error(
-        "Check in and check out time cannot both be null — at least one is required.",
-      );
+      throw new Error("At least one of check-in or check-out time is required.");
     }
     if (parsedData.check_out_time && parsedData.check_in_time == null) {
-      throw new Error(
-        "Check in time is required when check out time is provided.",
-      );
+      throw new Error("Check-in time is required when check-out is provided.");
     }
 
     const employee = await getEmployeeById(parsedData.employee_id);
     if (!employee) {
-      return res.status(404).json({
-        status: 0,
-        message: "Employee not found",
-        payload: [],
-      });
+      return res.status(404).json({ status: 0, message: "Employee not found", payload: [] });
     }
-    const existingAttendance = await singleAttendance(
-      parsedData.employee_id,
-      parsedData.attendance_date,
-    );
 
     const shift = await getEmployeeShift(parsedData.employee_id);
     if (!shift) {
       throw new Error("Shift not found for this employee");
     }
 
+    const existing = await singleAttendance(
+      parsedData.employee_id,
+      parsedData.attendance_date,
+    );
+    let finalCheckIn = parsedData.check_in_time;
+    let finalCheckOut = parsedData.check_out_time;
+    if (existing) {
+      finalCheckIn = finalCheckIn ?? existing.check_in_time;
+      finalCheckOut = finalCheckOut ?? existing.check_out_time;
+    }
     let check_in_status: "on_time" | "late" | null = null;
-    if (parsedData.check_in_time) {
+    if (finalCheckIn) {
       check_in_status = await getCheckInStatus(
-        parsedData.check_in_time,
+        finalCheckIn,
         shift.start_time,
         shift.grace_minutes,
       );
     }
 
     let work_status: any = null;
-    if (parsedData.check_in_time && parsedData.check_out_time) {
-      work_status = await getWorkStatus(
-        parsedData.check_in_time,
-        parsedData.check_out_time,
-      );
+    let calculatedWorkHours: string | null = null;
+    if (finalCheckIn && finalCheckOut) {
+      work_status = await getWorkStatus(finalCheckIn, finalCheckOut);
+      calculatedWorkHours = work_status.working_hours_formattted;
     }
-
     let finalAttendance;
 
-    if (existingAttendance) {
+    if (existing) {
       finalAttendance = await updateAttendance(
         {
-          attendance_id: existingAttendance.id,
+          attendance_id: existing.id,
           attendance_date: parsedData.attendance_date,
-          check_in_time: parsedData.check_in_time,
-          check_out_time: parsedData.check_out_time,
+          check_in_time: finalCheckIn ?? undefined,   
+          check_out_time: finalCheckOut ?? undefined,
         },
-        work_status,
+        work_status,          
         check_in_status,
-        // work_from_home: parsedData.work_from_home, 
       );
-
       return res.status(200).json({
         status: 1,
-        message: "Attendance updated successfully (record already existed)",
+        message: "Attendance updated successfully",
         payload: [finalAttendance],
       });
     } else {
-      // CREATE new record
       finalAttendance = await addAttendance(
-        parsedData,
+        {
+          ...parsedData,
+          check_in_time: finalCheckIn,
+          check_out_time: finalCheckOut,
+        },
         work_status,
         check_in_status,
-        // parsedData.work_from_home
       );
 
       return res.status(201).json({
