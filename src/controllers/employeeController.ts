@@ -2,6 +2,8 @@ import prisma from "../config/db";
 import { NextFunction, Request, Response } from "express";
 import {
   employeeChangePasswordSchema,
+  employeeDocumentCreateSchema,
+  employeeDocumentUpdateSchema,
   employeeProfileSchema,
   employeeSchema,
   employeeUpdateAdminSchema,
@@ -18,10 +20,14 @@ import {
   getEmployeeById,
   getEmployeeByPhone,
   getEmployeeByUsername,
+  getEmployeeDocuments,
   getEmployeeProfileById,
+  getSingleEmployeeFullDetails,
   updateEmployeeAdmin,
+  updateEmployeeDocument,
   updateEmployeeProfile,
   updateEmployeeStatusAndSyncUser,
+  uploadEmployeeDocuments,
 } from "../services/employeeServices";
 import { comparePassword, getUserByEmployeeId } from "../services/authServices";
 import { handleAppError } from "../utils/appErrorHandler";
@@ -343,7 +349,7 @@ export const updateEmployeeHandler = async (
       });
     }
 
-    if (!["admin", "hr","lead"].includes(currentUser.type)) {
+    if (!["admin", "hr", "lead"].includes(currentUser.type)) {
       return res.status(403).json({
         status: 0,
         message: "Unauthorized: Only admin or HR can update employees",
@@ -409,7 +415,7 @@ export const updateEmployeeStatusHandler = async (
       });
     }
 
-    if (!["admin", "hr","lead"].includes(requestingUser.type)) {
+    if (!["admin", "hr", "lead"].includes(requestingUser.type)) {
       return res.status(403).json({
         status: 0,
         message: "Only admin or HR can change employee status",
@@ -429,6 +435,160 @@ export const updateEmployeeStatusHandler = async (
   } catch (error) {
     const err = handleAppError(error);
     return res.status(err.status || 500).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+export const getSingleEmployeeFullHandler = async (
+  req: AuthRequest,
+  res: Response,
+): Promise<any> => {
+  try {
+    const employeeId = Number(req.params.id);
+    if (isNaN(employeeId) || employeeId <= 0) {
+      return res.status(400).json({
+        status: 0,
+        message: "Invalid employee ID",
+        payload: null,
+      });
+    }
+
+    if (!req.userRecord) {
+      return res.status(401).json({
+        status: 0,
+        message: "Unauthorized - user not authenticated",
+        payload: null,
+      });
+    }
+
+    // Optional: permission check
+    const currentUserType = await prisma.user.findFirst({
+      where: { employee_id: req.userRecord.id },
+      select: { type: true },
+    });
+
+    const allowedTypes = ["admin", "hr", "lead"];
+    const isSelf = req.userRecord.id === employeeId;
+
+    if (!isSelf && !allowedTypes.includes(currentUserType?.type || "")) {
+      return res.status(403).json({
+        status: 0,
+        message: "Unauthorized to view full employee details",
+        payload: null,
+      });
+    }
+
+    const fullData = await getSingleEmployeeFullDetails(employeeId);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Employee full details fetched successfully",
+      payload: [fullData],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status || 404).json({
+      status: 0,
+      message: err.message || "Employee not found",
+      payload: null,
+    });
+  }
+};
+// POST /api/v1/employees/documents
+export const uploadEmployeeDocumentsHandler = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    if (!req.userRecord?.id) {
+      return res
+        .status(401)
+        .json({ status: 0, message: "Unauthorized", payload: [] });
+    }
+
+    const parsed = employeeDocumentCreateSchema.parse(req.body);
+    const documents = await uploadEmployeeDocuments(parsed, req.userRecord.id);
+
+    return res.status(201).json({
+      status: 1,
+      message: "Documents uploaded successfully",
+      payload: documents,
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status || 400).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// PUT /api/v1/employees/documents/:id
+export const updateEmployeeDocumentHandler = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const docId = Number(req.params.id);
+    if (isNaN(docId)) {
+      return res
+        .status(400)
+        .json({ status: 0, message: "Invalid document ID", payload: [] });
+    }
+
+    if (!req.userRecord?.id) {
+      return res
+        .status(401)
+        .json({ status: 0, message: "Unauthorized", payload: [] });
+    }
+
+    const parsed = employeeDocumentUpdateSchema.parse({
+      ...req.body,
+      document_id: docId,
+    });
+    const updatedDoc = await updateEmployeeDocument(parsed, req.userRecord.id);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Document updated successfully",
+      payload: [updatedDoc],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status || 400).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+
+// GET /api/v1/employees/:employeeId/documents
+export const getEmployeeDocumentsHandler = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const employeeId = Number(req.params.employeeId);
+    if (isNaN(employeeId)) {
+      return res
+        .status(400)
+        .json({ status: 0, message: "Invalid employee ID", payload: [] });
+    }
+
+    const documents = await getEmployeeDocuments(employeeId);
+
+    return res.status(200).json({
+      status: 1,
+      message: "Employee documents fetched successfully",
+      payload: documents,
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status || 400).json({
       status: 0,
       message: err.message,
       payload: [],

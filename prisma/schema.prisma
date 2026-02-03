@@ -160,6 +160,7 @@ enum RecurrenceType {
   one_time
   weekly
   monthly
+  monthly_first_weekday
 }
 
 enum LocationType {
@@ -244,8 +245,16 @@ model Employee {
   ledTeams Team[] @relation("EmployeeTeamLead")
 
   // ✅ Member of Teams
-  TeamMember TeamMember[]
+  TeamMember       TeamMember[]
+  // Asset Management Relations
+  createdAssets    Asset[]            @relation("EmployeeCreatedAssets")
+  assignedAssets   AssetAssignment[]  @relation("EmployeeAssignedAssets")
+  assignedByAssets AssetAssignment[]  @relation("EmployeeAssignedBy")
+  uploadedImages   AssetImage[]       @relation("EmployeeUploadedImages")
+  documents        EmployeeDocument[] @relation("EmployeeDocuments")
 
+  // Relation: documents uploaded by this employee
+  uploadedDocuments  EmployeeDocument[]   @relation("UploadedDocuments")
   // ✅ Leave Quotas
   EmployeeLeaveQuota EmployeeLeaveQuota[]
 
@@ -291,14 +300,50 @@ model Employee {
   projectMemberships ProjectAssigner[] @relation("ProjectMembers")
 
   // 2. All assignments this employee has made (who assigned others)
-  revokedProjects  ProjectAssigner[] @relation("ProjectRevoker")
-  projectAssigners ProjectAssigner[] @relation("ProjectAssigner")
-  projectComments  ProjectComment[]
-   activityPerformedLogs TeamActivityLog[] @relation("ActorLog")
+  revokedProjects       ProjectAssigner[] @relation("ProjectRevoker")
+  projectAssigners      ProjectAssigner[] @relation("ProjectAssigner")
+  projectComments       ProjectComment[]
+  activityPerformedLogs TeamActivityLog[] @relation("ActorLog")
   activityTargetLogs    TeamActivityLog[] @relation("TargetLog")
 
   @@index([employee_code], name: "idx_employee_code")
   @@index([email], name: "idx_email")
+}
+
+enum DocumentType {
+  cnic_front
+  cnic_back
+  passport
+  driving_license
+  experience_letter
+  degree_certificate
+  other
+}
+
+model EmployeeDocument {
+  id            Int          @id @default(autoincrement())
+  employee_id   Int
+  document_type DocumentType
+  file_url      String       @db.VarChar(255) // e.g. "uploads/documents/cnic_front_123.jpg"
+  file_name     String       @db.VarChar(255)
+  mime_type     String       @db.VarChar(100) // "image/jpeg", "application/pdf"
+  description   String?      @db.Text
+  uploaded_by   Int? // who uploaded (admin/employee/self)
+  uploaded_at   DateTime     @default(now())
+  is_active     Boolean      @default(true)
+  is_deleted    Boolean      @default(false)
+  created_at    DateTime     @default(now())
+  updated_at    DateTime     @updatedAt
+
+  // ✅ Owner of the document
+  employee Employee @relation("EmployeeDocuments", fields: [employee_id], references: [id], onDelete: Cascade)
+
+  // ✅ Employee who uploaded the document
+  uploader Employee? @relation("UploadedDocuments", fields: [uploaded_by], references: [id], onDelete: SetNull)
+
+  @@index([employee_id])
+  @@index([document_type])
+  @@index([uploaded_at])
 }
 
 model Menu {
@@ -633,11 +678,12 @@ model AssetComplaintRequest {
   reviewed_at        DateTime?
   resolution_remarks String?
 
-  is_active  Boolean  @default(true)
-  is_deleted Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
+  is_active             Boolean   @default(true)
+  is_deleted            Boolean   @default(false)
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  asset_id              Int?
+  asset                 Asset?    @relation("AssetToComplaint", fields: [asset_id], references: [id], onDelete: SetNull)
   /// ✅ Relations
   requested_by_employee Employee  @relation("EmployeeAssetComplaintRequests", fields: [employee_id], references: [id], onDelete: Cascade)
   reviewed_by_employee  Employee? @relation("EmployeeReviewedAssetComplaintRequests", fields: [reviewed_by], references: [id], onDelete: SetNull)
@@ -1063,4 +1109,100 @@ model TeamActivityLog {
   @@index([performed_by])
   @@index([target_user_id])
   @@index([performed_at])
+}
+
+enum AssetStatus {
+  available
+  assigned
+  damaged
+  lost
+  in_repair
+  disposed
+}
+
+enum AssetImageType {
+  front
+  back
+  side
+  top
+  bottom
+  serial_number
+  keyboard
+  screen
+  ports
+  damage
+  receipt
+  box_packaging
+  other
+}
+
+model Asset {
+  id            Int         @id @default(autoincrement())
+  type          AssetType
+  serial_number String?     @unique @db.VarChar(100)
+  model         String?     @db.VarChar(100)
+  brand         String?     @db.VarChar(100)
+  purchase_date String?
+  warranty_end  String?
+  description   String?     @db.Text
+  status        AssetStatus @default(available)
+  is_active     Boolean     @default(true)
+  is_deleted    Boolean     @default(false)
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  created_by    Int? // who registered/created this asset entry
+
+  // Relations
+  images      AssetImage[]
+  assignments AssetAssignment[]
+  complaints  AssetComplaintRequest[] @relation("AssetToComplaint")
+
+  creator Employee? @relation("EmployeeCreatedAssets", fields: [created_by], references: [id], onDelete: SetNull)
+
+  @@index([type, status])
+  @@index([serial_number])
+}
+
+model AssetImage {
+  id          Int            @id @default(autoincrement())
+  asset_id    Int
+  url         String         @db.VarChar(255)
+  image_type  AssetImageType @default(other)
+  description String?        @db.Text
+  uploaded_by Int?
+  uploaded_at DateTime       @default(now())
+  is_active   Boolean        @default(true)
+  is_deleted  Boolean        @default(false)
+
+  asset    Asset     @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  uploader Employee? @relation("EmployeeUploadedImages", fields: [uploaded_by], references: [id], onDelete: SetNull)
+
+  @@index([asset_id])
+  @@index([image_type])
+  @@index([uploaded_at])
+}
+
+model AssetAssignment {
+  id                  Int       @id @default(autoincrement())
+  asset_id            Int
+  employee_id         Int
+  assigned_at         DateTime  @default(now())
+  returned_at         DateTime?
+  condition_on_assign String?   @db.Text
+  condition_on_return String?   @db.Text
+  assigned_by         Int? // Made optional → allows onDelete: SetNull
+  notes               String?   @db.Text
+  is_active           Boolean   @default(true)
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  asset    Asset     @relation(fields: [asset_id], references: [id], onDelete: Cascade)
+  employee Employee  @relation("EmployeeAssignedAssets", fields: [employee_id], references: [id], onDelete: Cascade)
+  assigner Employee? @relation("EmployeeAssignedBy", fields: [assigned_by], references: [id], onDelete: SetNull)
+
+  @@unique([asset_id, employee_id, assigned_at])
+  @@index([asset_id])
+  @@index([employee_id])
+  @@index([assigned_by])
+  @@index([assigned_at])
 }

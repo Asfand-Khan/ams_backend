@@ -1,3 +1,4 @@
+import z from "zod";
 import prisma from "../config/db";
 import {
   extractImageAndExtension,
@@ -6,6 +7,8 @@ import {
 import { generateRandomHex } from "../utils/generateRandomHex";
 import {
   Employee,
+  employeeDocumentCreateSchema,
+  employeeDocumentUpdateSchema,
   EmployeeUpdate,
   EmployeeUpdateAdmin,
   EmployeeUpdateProfile,
@@ -775,3 +778,437 @@ export const updateEmployeeStatusAndSyncUser = async (
     };
   });
 };
+export const getSingleEmployeeFullDetails = async (employeeId: number) => {
+  const employee = await prisma.employee.findUnique({
+    where: { id: employeeId, is_deleted: false },
+    select: {
+      id: true,
+      employee_code: true,
+      full_name: true,
+      email: true,
+      phone: true,
+      cnic: true,
+      gender: true,
+      dob: true,
+      join_date: true,
+      address: true,
+      department: { select: { id: true } },
+      designation: { select: { id: true } },
+      EmployeeShift: {
+        where: { is_active: true, is_deleted: false },
+        orderBy: { effective_from: "desc" },
+        take: 1,
+        select: { shift: { select: { id: true } } },
+      },
+      TeamMember: {
+        where: { is_active: true, is_deleted: false },
+        take: 1, // assuming only 1 team is required
+        select: { team: { select: { id: true } } },
+      },
+      User: {
+        where: { is_deleted: false },
+        take: 1,
+        select: {
+          username: true,
+          type: true,
+          user_menu_rights: {
+            where: {
+              menu: { is_deleted: false, is_active: true },
+            },
+            select: {
+              can_view: true,
+              can_create: true,
+              can_edit: true,
+              can_delete: true,
+              menu: { select: { id: true } },
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!employee) throw new Error("Employee not found or deleted");
+
+  const user = employee.User?.[0] ?? null;
+
+  return {
+    id: employee.id,
+    employee_code: employee.employee_code,
+    username: user?.username ?? null,
+    full_name: employee.full_name,
+    email: employee.email,
+    emp_type: user?.type ?? null,
+    phone: employee.phone,
+    cnic: employee.cnic,
+    gender: employee.gender,
+    dob: employee.dob ? employee.dob.toISOString().split("T")[0] : null,
+    address: employee.address,
+    join_date: employee.join_date
+      ? employee.join_date.toISOString().split("T")[0]
+      : null,
+    department_id: employee.department?.id ?? null,
+    designation_id: employee.designation?.id ?? null,
+    shift_id: employee.EmployeeShift?.[0]?.shift?.id ?? null,
+    team_id: employee.TeamMember?.[0]?.team?.id ?? null,
+    menu_rights:
+      user?.user_menu_rights.map((right) => ({
+        menu_id: right.menu.id,
+        can_view: right.can_view,
+        can_create: right.can_create,
+        can_edit: right.can_edit,
+        can_delete: right.can_delete,
+      })) ?? [],
+  };
+};
+
+async function saveAndCreateDocument(
+  tx: any,
+  employeeId: number,
+  doc: { base64: string; document_type: string; description?: string },
+  uploadedBy: number,
+) {
+  const { image: base64Data, extension } = extractImageAndExtension(doc.base64);
+
+  const filename = `emp_${employeeId}_${doc.document_type}_${Date.now()}.${extension}`;
+  const directory = "uploads/documents";
+
+  const { success } = await saveBase64Image(base64Data, filename, directory);
+  if (!success) throw new Error(`Failed to save ${doc.document_type} document`);
+
+  return tx.employeeDocument.create({
+    data: {
+      employee_id: employeeId,
+      document_type: doc.document_type,
+      file_url: `${directory}/${filename}`,
+      file_name: filename,
+      mime_type: extension === "pdf" ? "application/pdf" : `image/${extension}`,
+      description: doc.description?.trim() ?? null,
+      uploaded_by: uploadedBy,
+    },
+  });
+}
+
+export const uploadEmployeeDocuments = async (
+  data: z.infer<typeof employeeDocumentCreateSchema>,
+  uploadedBy: number,
+) => {
+  return prisma.$transaction(
+    async (tx) => {
+      const employee = await tx.employee.findUnique({
+        where: { id: data.employee_id, is_deleted: false },
+      });
+      if (!employee) throw new Error("Employee not found or deleted");
+
+      const uploadedDocs = [];
+
+      for (const doc of data.documents) {
+        const savedDoc = await saveAndCreateDocument(
+          tx,
+          data.employee_id,
+          doc,
+          uploadedBy,
+        );
+        uploadedDocs.push(savedDoc);
+      }
+
+      return uploadedDocs;
+    },
+    { timeout: 30000 },
+  );
+};
+
+export const updateEmployeeDocument = async (
+  data: z.infer<typeof employeeDocumentUpdateSchema>,
+  updatedBy: number,
+) => {
+  return prisma.$transaction(
+    async (tx) => {
+      const existing = await tx.employeeDocument.findUnique({
+        where: { id: data.document_id, is_deleted: false },
+      });
+      if (!existing) throw new Error("Document not found or deleted");
+
+      let updateData: any = {
+        description: data.description,
+        is_active: data.is_active,
+      };
+
+      if (data.base64) {
+        const { image: base64Data, extension } = extractImageAndExtension(
+          data.base64,
+        );
+        const filename = `emp_${existing.employee_id}_${existing.document_type}_updated_${Date.now()}.${extension}`;
+        const directory = "uploads/documents";
+
+        const { success } = await saveBase64Image(
+          base64Data,
+          filename,
+          directory,
+        );
+        if (!success) throw new Error("Failed to save updated document");
+
+        updateData.file_url = `${directory}/${filename}`;
+        updateData.file_name = filename;
+        updateData.mime_type =
+          extension === "pdf" ? "application/pdf" : `image/${extension}`;
+      }
+
+      const updatedDoc = await tx.employeeDocument.update({
+        where: { id: data.document_id },
+        data: updateData,
+      });
+
+      return updatedDoc;
+    },
+    { timeout: 30000 },
+  );
+};
+
+export const getEmployeeDocuments = async (employeeId: number) => {
+  return prisma.employeeDocument.findMany({
+    where: {
+      employee_id: employeeId,
+      is_deleted: false,
+    },
+    orderBy: { uploaded_at: "desc" },
+    select: {
+      id: true,
+      document_type: true,
+      file_url: true,
+      file_name: true,
+      mime_type: true,
+      description: true,
+      uploaded_at: true,
+      is_active: true,
+      uploader: { select: { full_name: true } },
+    },
+  });
+};
+// export const getSingleEmployeeFullDetails = async (employeeId: number) => {
+//   const employee = await prisma.employee.findUnique({
+//     where: {
+//       id: employeeId,
+//       is_deleted: false,
+//     },
+//     select: {
+//       id: true,
+//       employee_code: true,
+//       full_name: true,
+//       father_name: true,
+//       email: true,
+//       phone: true,
+//       cnic: true,
+//       gender: true,
+//       dob: true,
+//       join_date: true,
+//       leave_date: true,
+//       address: true,
+//       profile_picture: true,
+//       status: true,
+//       is_active: true,
+//       created_at: true,
+//       updated_at: true,
+//       department: {
+//         select: {
+//           id: true,
+//           name: true,
+//         },
+//       },
+//       designation: {
+//         select: {
+//           id: true,
+//           title: true,
+//           level: true,
+//         },
+//       },
+//       User: {
+//         where: {
+//           is_deleted: false,
+//         },
+//         take: 1,
+//         select: {
+//           id: true,
+//           username: true,
+//           email: true,
+//           type: true,
+//           last_login: true,
+//           is_active: true,
+//           created_at: true,
+//           updated_at: true,
+//           user_menu_rights: {
+//             where: {
+//               menu: {
+//                 is_deleted: false,
+//                 is_active: true,
+//               },
+//             },
+//             select: {
+//               can_view: true,
+//               can_create: true,
+//               can_edit: true,
+//               can_delete: true,
+//               menu: {
+//                 select: {
+//                   id: true,
+//                   name: true,
+//                   url: true,
+//                   icon: true,
+//                   type: true,
+//                   parent_id: true,
+//                 },
+//               },
+//             },
+//             orderBy: {
+//               menu: {
+//                 sorting: "asc", // optional – better UX
+//               },
+//             },
+//           },
+//         },
+//       },
+//       EmployeeShift: {
+//         where: {
+//           is_active: true,
+//           is_deleted: false,
+//         },
+//         orderBy: {
+//           effective_from: "desc",
+//         },
+//         take: 1,
+//         select: {
+//           shift: {
+//             select: {
+//               id: true,
+//               name: true,
+//               start_time: true,
+//               end_time: true,
+//               grace_minutes: true,
+//               half_day_hours: true,
+//             },
+//           },
+//           effective_from: true,
+//         },
+//       },
+//       TeamMember: {
+//         where: {
+//           is_active: true,
+//           is_deleted: false,
+//         },
+//         select: {
+//           team: {
+//             select: {
+//               id: true,
+//               name: true,
+//               description: true,
+//               team_lead: {
+//                 select: {
+//                   id: true,
+//                   full_name: true,
+//                 },
+//               },
+//             },
+//           },
+//           role_in_team: true,
+//           assigned_at: true,
+//         },
+//       },
+//     },
+//   });
+
+//   if (!employee) {
+//     throw new Error("Employee not found or has been deleted");
+//   }
+//   const user = employee.User?.[0] ?? null;
+
+//   return {
+//     employee: {
+//       id: employee.id,
+//       employee_code: employee.employee_code,
+//       full_name: employee.full_name,
+//       father_name: employee.father_name,
+//       email: employee.email,
+//       phone: employee.phone,
+//       cnic: employee.cnic,
+//       gender: employee.gender,
+//       dob: employee.dob ? employee.dob.toISOString().split("T")[0] : null,
+//       join_date: employee.join_date ? employee.join_date.toISOString().split("T")[0] : null,
+//       leave_date: employee.leave_date ? employee.leave_date.toISOString().split("T")[0] : null,
+//       address: employee.address,
+//       profile_picture: employee.profile_picture,
+//       status: employee.status,
+//       is_active: employee.is_active,
+//       created_at: employee.created_at.toISOString(),
+//       updated_at: employee.updated_at.toISOString(),
+
+//       department: employee.department
+//         ? {
+//             id: employee.department.id,
+//             name: employee.department.name,
+//           }
+//         : null,
+
+//       designation: employee.designation
+//         ? {
+//             id: employee.designation.id,
+//             title: employee.designation.title,
+//             level: employee.designation.level,
+//           }
+//         : null,
+
+//       current_shift: employee.EmployeeShift?.[0]
+//         ? {
+//             shift_id: employee.EmployeeShift[0].shift.id,
+//             name: employee.EmployeeShift[0].shift.name,
+//             start_time: employee.EmployeeShift[0].shift.start_time,
+//             end_time: employee.EmployeeShift[0].shift.end_time,
+//             grace_minutes: employee.EmployeeShift[0].shift.grace_minutes,
+//             half_day_hours: employee.EmployeeShift[0].shift.half_day_hours,
+//             effective_from: employee.EmployeeShift[0].effective_from.toISOString(),
+//           }
+//         : null,
+
+//       teams: employee.TeamMember.map((tm) => ({
+//         team_id: tm.team.id,
+//         name: tm.team.name,
+//         description: tm.team.description || null,
+//         role_in_team: tm.role_in_team,
+//         assigned_at: tm.assigned_at.toISOString(),
+//         team_lead: tm.team.team_lead
+//           ? {
+//               id: tm.team.team_lead.id,
+//               full_name: tm.team.team_lead.full_name,
+//             }
+//           : null,
+//       })),
+
+//       user: user
+//         ? {
+//             user_id: user.id,
+//             username: user.username,
+//             email: user.email,
+//             type: user.type,
+//             last_login: user.last_login ? user.last_login.toISOString() : null,
+//             is_active: user.is_active,
+//             created_at: user.created_at.toISOString(),
+//             updated_at: user.updated_at.toISOString(),
+//           }
+//         : null,
+
+//       menu_rights: user?.user_menu_rights.map((right) => ({
+//         menu_id: right.menu.id,
+//         menu_name: right.menu.name,
+//         menu_url: right.menu.url,
+//         menu_icon: right.menu.icon,
+//         menu_type: right.menu.type,
+//         parent_id: right.menu.parent_id,
+//         permissions: {
+//           can_view: right.can_view,
+//           can_create: right.can_create,
+//           can_edit: right.can_edit,
+//           can_delete: right.can_delete,
+//         },
+//       })) ?? [],
+//     },
+//   };
+// };

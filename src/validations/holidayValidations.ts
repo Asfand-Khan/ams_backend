@@ -33,6 +33,13 @@ const baseHolidaySchema = z.object({
       invalid_type_error: "Description must be a string.",
     })
     .optional(),
+  notification_title: z.string().optional().default("New Holiday Announced!"),
+  notification_message: z
+    .string()
+    .optional()
+    .default(
+      "A new holiday has been declared. Check your calendar for details.",
+    ),
 });
 
 export const holidaySchema = baseHolidaySchema.refine(
@@ -44,7 +51,7 @@ export const holidaySchema = baseHolidaySchema.refine(
   {
     message: "End date must be greater than or equal to start date.",
     path: ["end_date"],
-  }
+  },
 );
 
 export const holidayUpdateSchema = baseHolidaySchema
@@ -70,7 +77,7 @@ export const holidayUpdateSchema = baseHolidaySchema
     {
       message: "End date must be greater than or equal to start date.",
       path: ["end_date"],
-    }
+    },
   );
 
 export type Holiday = z.infer<typeof holidaySchema>;

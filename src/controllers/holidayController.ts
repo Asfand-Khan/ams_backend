@@ -11,14 +11,8 @@ import {
   updateHoliday,
 } from "../services/holidayServices";
 
-// Module --> Holiday
-// Method --> POST (Protected)
-// Endpoint --> /api/v1/holidays
-// Description --> Create Holidays
-export const createHolidayHandler = async (
-  req: Request,
-  res: Response
-): Promise<any> => {
+// POST /api/v1/holidays
+export const createHolidayHandler = async (req: Request, res: Response) => {
   try {
     const parsedData = holidaySchema.parse(req.body);
     const newHoliday = await createHoliday(parsedData);
@@ -38,14 +32,8 @@ export const createHolidayHandler = async (
   }
 };
 
-// Module --> Holiday
-// Method --> GET (Protected)
-// Endpoint --> /api/v1/holidays/
-// Description --> Get Holidays
-export const getAllHolidaysHandler = async (
-  req: Request,
-  res: Response
-): Promise<any> => {
+// GET /api/v1/holidays
+export const getAllHolidaysHandler = async (req: Request, res: Response) => {
   try {
     const allHolidays = await getAllHolidays();
     return res.status(200).json({
@@ -63,26 +51,28 @@ export const getAllHolidaysHandler = async (
   }
 };
 
-// Module --> Holiday
-// Method --> POST (Protected)
-// Endpoint --> /api/v1/holidays/single
-// Description --> Get Single Holidays
-export const getSingleHolidayHandler = async (
-  req: Request,
-  res: Response
-): Promise<any> => {
+// GET /api/v1/holidays/:id
+export const getHolidayByIdHandler = async (req: Request, res: Response) => {
   try {
-    const holidayId = parseInt(req.body.id);
+    const holidayId = parseInt(req.params.id);
 
     if (isNaN(holidayId) || holidayId <= 0) {
-      throw new Error("Invalid holiday id or holiday id can not be 0");
+      throw new Error("Invalid holiday id");
     }
 
     const holiday = await getHolidayById(holidayId);
 
+    if (!holiday) {
+      return res.status(404).json({
+        status: 0,
+        message: "Holiday not found",
+        payload: [],
+      });
+    }
+
     return res.status(200).json({
       status: 1,
-      message: "Single holiday fetched successfully",
+      message: "Holiday fetched successfully",
       payload: [holiday],
     });
   } catch (error) {
@@ -95,16 +85,20 @@ export const getSingleHolidayHandler = async (
   }
 };
 
-// Module --> Holiday
-// Method --> PUT (Protected)
-// Endpoint --> /api/v1/holidays/
-// Description --> Update Holiday
-export const updateHolidayHandler = async (
-  req: Request,
-  res: Response
-): Promise<any> => {
+// PUT /api/v1/holidays/:id
+export const updateHolidayHandler = async (req: Request, res: Response) => {
   try {
-    const parsedData = holidayUpdateSchema.parse(req.body);
+    const holidayId = parseInt(req.params.id);
+
+    if (isNaN(holidayId) || holidayId <= 0) {
+      throw new Error("Invalid holiday id");
+    }
+
+    const parsedData = holidayUpdateSchema.parse({
+      ...req.body,
+      holiday_id: holidayId,
+    });
+
     const updatedHoliday = await updateHoliday(parsedData);
 
     return res.status(200).json({
@@ -121,3 +115,4 @@ export const updateHolidayHandler = async (
     });
   }
 };
+

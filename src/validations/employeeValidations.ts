@@ -1,3 +1,4 @@
+import { DocumentType } from "@prisma/client";
 import { nullable, z } from "zod";
 
 const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,7 +33,7 @@ export const empTypeEnum = z.enum(
     required_error: "Employee type is required",
     invalid_type_error:
       "Employee type must be 'employee', 'manager', admin, hr or 'lead'",
-  }
+  },
 );
 
 export const employeeSchema = z.object({
@@ -71,7 +72,7 @@ export const employeeSchema = z.object({
     .startsWith("03", "Phone number must start with '03'")
     .length(
       11,
-      "Phone number must be at exactly 11 characters i.e: 03XXXXXXXXXX"
+      "Phone number must be at exactly 11 characters i.e: 03XXXXXXXXXX",
     )
     .or(z.literal("").transform(() => undefined)),
 
@@ -152,7 +153,7 @@ export const employeeSchema = z.object({
           })
           .default(false),
       }),
-      { required_error: "Menu rights are required" }
+      { required_error: "Menu rights are required" },
     )
     .nullable()
     .optional(),
@@ -209,7 +210,7 @@ export const employeeUpdateProfileSchema = z.object({
     .startsWith("03", "Phone number must start with '03'")
     .length(
       11,
-      "Phone number must be at exactly 11 characters i.e: 03XXXXXXXXXX"
+      "Phone number must be at exactly 11 characters i.e: 03XXXXXXXXXX",
     )
     .or(z.literal("").transform(() => undefined))
     .nullable()
@@ -231,7 +232,7 @@ export const employeeUpdateProfileSchema = z.object({
     .string({ invalid_type_error: "Profile picture must be a string" })
     .regex(
       base64ImageRegex,
-      "Profile picture must be a valid base64 image format (e.g., data:image/png;base64,...)"
+      "Profile picture must be a valid base64 image format (e.g., data:image/png;base64,...)",
     )
     .nullable()
     .optional(),
@@ -265,12 +266,32 @@ export const employeeUpdateAdminSchema = z.object({
         can_create: z.boolean().optional().default(false),
         can_edit: z.boolean().optional().default(false),
         can_delete: z.boolean().optional().default(false),
-      })
+      }),
     )
     .optional(),
   replace_all_rights: z.boolean().optional().default(false),
 });
+export const employeeDocumentItemSchema = z.object({
+  base64: z.string().min(100, "Invalid base64 file"),
+  document_type: z.nativeEnum(DocumentType),
+  description: z.string().max(500).optional(),
+});
 
+// For bulk / create multiple documents
+export const employeeDocumentCreateSchema = z.object({
+  employee_id: z.number().int().positive(),
+  documents: z
+    .array(employeeDocumentItemSchema)
+    .min(1, "At least one document required"),
+});
+
+// For updating / replacing a specific document
+export const employeeDocumentUpdateSchema = z.object({
+  document_id: z.number().int().positive(),
+  base64: z.string().optional(), // if you want to replace file
+  description: z.string().max(500).optional().nullable(),
+  is_active: z.boolean().optional(),
+});
 export type Employee = z.infer<typeof employeeSchema>;
 export type EmployeeUpdate = z.infer<typeof employeeUpdateSchema>;
 export type EmployeeChangePassword = z.infer<

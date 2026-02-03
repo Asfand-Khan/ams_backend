@@ -12,7 +12,7 @@
 // async function main() {
 //   await syncFingerprintLogs({
 //     startDate: "2026-01-27T00:00:00",
-//     endDate: "2026-01-27T23:59:59",
+//     endDate: "2026-01-30T23:59:59",
 //   });
 // }
 
