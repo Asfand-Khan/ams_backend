@@ -157,11 +157,11 @@ export const createNotification = async (data: CreateNotification) => {
       },
     });
 
-    // await sendPushNotification(
-    //   tokens.map((t) => t.token),
-    //   title,
-    //   message
-    // );
+    await sendPushNotification(
+      tokens.map((t) => t.token),
+      title,
+      message
+    );
     return;
   }
 
@@ -171,11 +171,11 @@ export const createNotification = async (data: CreateNotification) => {
   });
 
   const tokens = await prisma.fCMToken.findMany({ where: { is_active: true } });
-  // await sendPushNotification(
-  //   tokens.map((t) => t.token),
-  //   title,
-  //   message
-  // );
+  await sendPushNotification(
+    tokens.map((t) => t.token),
+    title,
+    message
+  );
 
   const users = await prisma.user.findMany({
     select: { email: true },
@@ -241,7 +241,7 @@ export const createCombinedNotification = async (data: CreateNotification) => {
     where: { user_id: { in: userIds }, is_active: true },
   });
 
-  // await sendPushNotification(tokens.map((t) => t.token), title, message);
+  await sendPushNotification(tokens.map((t) => t.token), title, message);
 
   return;
 };
