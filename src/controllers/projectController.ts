@@ -9,7 +9,7 @@ import {
   taskStatusSchema,
   projectCommentSchema,
   projectFilterSchema,
-  ProjectFilter,
+  projectLogFilterSchema,
 } from "../validations/projectValidations";
 import {
   addComment,
@@ -19,6 +19,7 @@ import {
   getCommentList,
   getFilteredProjectsList,
   getProjectEmployees,
+  getProjectHistoryLogs,
   removeProjectStatus,
   updateProject,
   updateProjectAssignees,
@@ -38,6 +39,7 @@ export const createProjectHandler = async (req: AuthRequest, res: Response) => {
       });
     }
     const parsed = projectCreateSchema.parse(req.body);
+
     const creatorExists = await prisma.employee.findFirst({
       where: {
         id: req.userRecord.id,
@@ -53,6 +55,7 @@ export const createProjectHandler = async (req: AuthRequest, res: Response) => {
         payload: [],
       });
     }
+
     const existingProject = await prisma.project.findFirst({
       where: {
         name: parsed.name.toLowerCase(),
@@ -69,6 +72,7 @@ export const createProjectHandler = async (req: AuthRequest, res: Response) => {
         payload: [],
       });
     }
+
     if (parsed.assignee_ids?.length) {
       const validEmployees = await prisma.employee.count({
         where: {
@@ -86,6 +90,7 @@ export const createProjectHandler = async (req: AuthRequest, res: Response) => {
         });
       }
     }
+
     const project = await createProject(parsed, req.userRecord.id);
 
     return res.status(201).json({
@@ -164,19 +169,38 @@ export const addCommentHandler = async (req: AuthRequest, res: Response) => {
       .json({ status: 0, message: err.message, payload: [] });
   }
 };
+
 // Module --> Project
 // Method --> GET (Protected)
 // Endpoint --> /api/v1/projects/list
 // Description --> Get Project List With Filters
 export const projectsListHandler = async (req: AuthRequest, res: Response) => {
   try {
-    const filters: ProjectFilter = projectFilterSchema.parse(req.body);
-    const { projects, total } = await getFilteredProjectsList(req.userRecord, filters);
+    const filters = projectFilterSchema.parse(req.body);
+    const shouldPaginate =
+      filters.page !== undefined && filters.limit !== undefined;
+
+    const { projects, total } = await getFilteredProjectsList(
+      req.userRecord,
+      filters,
+    );
+
     return res.status(200).json({
       status: 1,
-      message: projects.length ? "Projects fetched successfully" : "No projects found",
+      message: projects.length
+        ? "Projects fetched successfully"
+        : "No projects found",
       data: projects,
-      meta: { total, filteredCount: projects.length },
+      ...(shouldPaginate && {
+        pagination: {
+          total,
+          page: filters.page!,
+          limit: filters.limit!,
+          totalPages: Math.ceil(total / filters.limit!),
+          hasNext: filters.page! * filters.limit! < total,
+          hasPrev: filters.page! > 1,
+        },
+      }),
     });
   } catch (error) {
     const err = handleAppError(error);
@@ -184,7 +208,6 @@ export const projectsListHandler = async (req: AuthRequest, res: Response) => {
       status: 0,
       message: err.message,
       data: [],
-      meta: { total: 0, filteredCount: 0 },
     });
   }
 };
@@ -193,15 +216,22 @@ export const projectsListHandler = async (req: AuthRequest, res: Response) => {
 // Method --> GET (Protected)
 // Endpoint --> /api/v1/projects
 // Description --> Get Project List
-export const getAllProjectsHandler = async (req: AuthRequest, res: Response) => {
+export const getAllProjectsHandler = async (
+  req: AuthRequest,
+  res: Response,
+) => {
   try {
-    const { dateFrom, dateTo } = req.query; // e.g., ?dateFrom=2026-01-01&dateTo=2026-01-31
-    const projects = await getAllProjects(req.userRecord, dateFrom as string, dateTo as string);
+    const { dateFrom, dateTo } = req.query;
+    const projects = await getAllProjects(
+      req.userRecord,
+      dateFrom as string,
+      dateTo as string,
+    );
 
     return res.status(200).json({
       status: 1,
       message: "Projects listed successfully",
-      data: projects, // changed to data for consistency
+      data: projects,
     });
   } catch (error) {
     const err = handleAppError(error);
@@ -221,27 +251,55 @@ export const getCommentListHandler = async (
 ) => {
   try {
     const projectId = Number(req.params.projectId);
-    if (isNaN(projectId))
-      return res
-        .status(400)
-        .json({ status: 0, message: "Invalid project ID", payload: [] });
-
-    const comments = await getCommentList(projectId);
-
-    return res.status(200).json({
-      status: 1,
-      message: "Comments listed successfully",
-      payload: comments,
+    if (isNaN(projectId)) {
+      return res.status(400).json({
+        status: 0,
+        message: "Invalid project ID",
+        data: [],
+      });
+    }
+    const page = typeof req.body.page === "number" && Number.isInteger(req.body.page) && req.body.page > 0
+      ? req.body.page
+      : undefined;
+    const limit = typeof req.body.limit === "number" && Number.isInteger(req.body.limit) && req.body.limit > 0 && req.body.limit <= 100
+      ? req.body.limit
+      : undefined;
+    const shouldPaginate = page !== undefined && limit !== undefined;
+    projectFilterSchema.parse(req.body);
+    const { comments, total } = await getCommentList(projectId, {
+      page,
+      limit,
     });
+    const response: any = {
+      status: 1,
+      message: comments.length
+        ? "Comments listed successfully"
+        : "No comments found",
+      data: comments,
+    };
+    if (shouldPaginate) {
+      response.pagination = {
+        total,                        
+        page,
+        limit,                           
+        totalPages: Math.ceil(total / limit),
+        hasNext: page * limit < total,    
+        hasPrev: page > 1,         
+      };
+    }
+
+    return res.status(200).json(response);
   } catch (error) {
     const err = handleAppError(error);
-    return res
-      .status(err.status || 400)
-      .json({ status: 0, message: err.message, payload: [] });
+    return res.status(err.status || 400).json({
+      status: 0,
+      message: err.message,
+      data: [],
+    });
   }
 };
 
-// ASSIGN / REMOVE MEMBER
+// ── Update Project Assignees ─────────────────────────────────────────
 export const updateProjectAssigneesHandler = async (
   req: AuthRequest,
   res: Response,
@@ -275,7 +333,7 @@ export const updateProjectAssigneesHandler = async (
   }
 };
 
-// ADD PROJECT STATUS
+// ── Add Project Status ───────────────────────────────────────────────
 export const addProjectStatusHandler = async (
   req: AuthRequest,
   res: Response,
@@ -309,7 +367,7 @@ export const addProjectStatusHandler = async (
   }
 };
 
-// REMOVE PROJECT STATUS
+// ── Remove Project Status ────────────────────────────────────────────
 export const removeProjectStatusHandler = async (
   req: AuthRequest,
   res: Response,
@@ -340,7 +398,12 @@ export const removeProjectStatusHandler = async (
       .json({ status: 0, message: err.message, payload: [] });
   }
 };
-export const getProjectEmployeesHandler = async (req: AuthRequest, res: Response) => {
+
+// ── Get Project Employees ────────────────────────────────────────────
+export const getProjectEmployeesHandler = async (
+  req: AuthRequest,
+  res: Response,
+) => {
   try {
     const employees = await getProjectEmployees(req.userRecord);
 
@@ -354,5 +417,54 @@ export const getProjectEmployeesHandler = async (req: AuthRequest, res: Response
     return res
       .status(err.status || 400)
       .json({ status: 0, message: err.message, data: [] });
+  }
+};
+
+// ── Get Project History Logs ─────────────────────────────────────────
+export const getProjectHistoryLogsHandler = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    const projectId = Number(req.params.projectId);
+    if (isNaN(projectId))
+      return res
+        .status(400)
+        .json({ status: 0, message: "Invalid project ID", data: [] });
+
+    const filters = projectLogFilterSchema.parse(req.body);
+    const shouldPaginate =
+      filters.page !== undefined && filters.limit !== undefined;
+
+    const { logs, total } = await getProjectHistoryLogs(
+      projectId,
+      filters,
+      req.userRecord,
+    );
+
+    return res.status(200).json({
+      status: 1,
+      message: logs.length
+        ? "Project history logs fetched successfully"
+        : "No logs found",
+      data: logs,
+      ...(shouldPaginate && {
+        pagination: {
+          total,
+          page: filters.page!,
+          limit: filters.limit!,
+          totalPages: Math.ceil(total / filters.limit!),
+          hasNext: filters.page! * filters.limit! < total,
+          hasPrev: filters.page! > 1,
+        },
+      }),
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status || 400).json({
+      status: 0,
+      message: err.message,
+      data: [],
+    });
   }
 };

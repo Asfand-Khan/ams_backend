@@ -1,5 +1,44 @@
 import { z } from "zod";
+import { ActivityAction, ProjectStatus } from "@prisma/client";
 
+// ── Base schema (without refine) ─────────────────────────────────────
+export const projectFilterBaseSchema = z.object({
+  startDate: z
+    .string()
+    .optional()
+    .refine((val) => !val || !isNaN(Date.parse(val)), {
+      message: "Invalid startDate format. Use YYYY-MM-DD",
+    }),
+  endDate: z
+    .string()
+    .optional()
+    .refine((val) => !val || !isNaN(Date.parse(val)), {
+      message: "Invalid endDate format. Use YYYY-MM-DD",
+    }),
+  statuses: z.array(z.nativeEnum(ProjectStatus)).optional(),
+  createdByIds: z.array(z.number().int().positive()).optional(),
+  assigneeIds: z.array(z.number().int().positive()).optional(),
+  page: z.number().int().positive().optional(),
+  limit: z.number().int().positive().max(100).optional(),
+});
+
+// ── Final filter schema with business rules ──────────────────────────
+export const projectFilterSchema = projectFilterBaseSchema.refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return new Date(data.startDate) <= new Date(data.endDate);
+    }
+    return true;
+  },
+  {
+    message: "startDate cannot be after endDate",
+    path: ["startDate"],
+  },
+);
+
+export type ProjectFilter = z.infer<typeof projectFilterSchema>;
+
+// ── Other schemas ────────────────────────────────────────────────────
 export const projectCreateSchema = z.object({
   name: z
     .string()
@@ -12,8 +51,6 @@ export const projectCreateSchema = z.object({
   status: z.enum(["active", "on_hold", "completed", "archived"]).optional(),
   assignee_ids: z.array(z.number().int().positive()).optional(),
 });
-
-export type ProjectCreate = z.infer<typeof projectCreateSchema>;
 
 export const projectUpdateSchema = z.object({
   name: z
@@ -28,7 +65,6 @@ export const projectUpdateSchema = z.object({
   status: z.enum(["active", "on_hold", "completed", "archived"]).optional(),
   assignee_ids: z.array(z.number().int().positive()).optional(),
 });
-export type ProjectUpdate = z.infer<typeof projectUpdateSchema>;
 
 export const projectAssigneesSchema = z.object({
   add: z.array(z.number().int().positive()).optional().default([]),
@@ -41,27 +77,18 @@ export const taskStatusSchema = z.object({
 });
 
 export const projectCommentSchema = z.object({
-  comment: z.string().min(1, "Comment is required"),
+  comment: z.string().min(1, "Comment is required").max(2000),
 });
 
-export const projectFilterSchema = z.object({
-  startDate: z
-    .string()
-    .optional()
-    .refine((val) => !val || !isNaN(Date.parse(val)), {
-      message: "Invalid start date",
-    }),
-  endDate: z
-    .string()
-    .optional()
-    .refine((val) => !val || !isNaN(Date.parse(val)), {
-      message: "Invalid end date",
-    }),
-  assigneeIds: z.array(z.number().int().positive()).optional(),
-  statuses: z
-    .array(z.enum(["active", "on_hold", "completed", "archived"]))
-    .optional(),
-  createdByIds: z.array(z.number().int().positive()).optional(),
+export const projectLogFilterSchema = z.object({
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  actions: z.array(z.nativeEnum(ActivityAction)).optional(),
+  performedByIds: z.array(z.number().int().positive()).optional(),
+  page: z.number().int().positive().optional(),
+  limit: z.number().int().positive().max(100).optional(),
 });
 
-export type ProjectFilter = z.infer<typeof projectFilterSchema>;
+export type ProjectCreate = z.infer<typeof projectCreateSchema>;
+export type ProjectUpdate = z.infer<typeof projectUpdateSchema>;
+export type ProjectLogFilter = z.infer<typeof projectLogFilterSchema>;

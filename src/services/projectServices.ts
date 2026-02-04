@@ -1,6 +1,8 @@
 import prisma from "../config/db";
 import {
   ProjectCreate,
+  ProjectFilter,
+  ProjectLogFilter,
   ProjectUpdate,
 } from "../validations/projectValidations";
 import {
@@ -231,10 +233,7 @@ export const updateProject = async (
           performed_at: now,
         });
       }
-
-      // Handle assignees (add new, keep existing, revoke removed)
       if (updateData.assignee_ids !== undefined) {
-        // Current assignments
         const currentAssignments = await tx.projectAssigner.findMany({
           where: { project_id: projectId },
           select: { employee_id: true, id: true, status: true },
@@ -246,8 +245,6 @@ export const updateProject = async (
             .map((a) => a.employee_id),
         );
         const newIds = new Set(updateData.assignee_ids);
-
-        // New assignees
         const assigneesToAdd = updateData.assignee_ids.filter(
           (id) => !currentIds.has(id),
         );
@@ -297,8 +294,6 @@ export const updateProject = async (
             })),
           );
         }
-
-        // Revoke removed assignees
         const assignmentsToRevoke = currentAssignments.filter(
           (a) =>
             a.status === AssignmentStatus.active && !newIds.has(a.employee_id),
@@ -333,8 +328,6 @@ export const updateProject = async (
           );
         }
       }
-
-      // Save all logs
       if (logs.length > 0) {
         await tx.teamActivityLog.createMany({ data: logs });
       }
@@ -343,7 +336,6 @@ export const updateProject = async (
     },
     { timeout: 25000 },
   );
-  // Fetch full project details
   return prisma.project.findUniqueOrThrow({
     where: { id: updatedProject.id },
     select: {
@@ -382,7 +374,6 @@ export const addComment = async (
   const now = new Date();
 
   const newComment = await prisma.$transaction(async (tx) => {
-    // Create the comment
     const created = await tx.projectComment.create({
       data: {
         project_id: projectId,
@@ -393,8 +384,6 @@ export const addComment = async (
 
     const logComment =
       comment.length > 800 ? comment.substring(0, 97) + "..." : comment;
-
-    // Log comment added
     await tx.teamActivityLog.create({
       data: {
         entity_type: EntityType.project,
@@ -407,7 +396,6 @@ export const addComment = async (
         target_user_id: null,
       },
     });
-
     return created;
   });
 
@@ -428,21 +416,26 @@ export const addComment = async (
   });
 };
 
-export const getCommentList = async (projectId: number) => {
-  return prisma.projectComment.findMany({
-    where: { 
-      project_id: projectId, 
-      is_active: true 
+export const getCommentList = async (
+  projectId: number,
+  filters: { page?: number; limit?: number },
+) => {
+  const { page, limit } = filters;
+  const shouldPaginate = page !== undefined && limit !== undefined;
+
+  const total = await prisma.projectComment.count({
+    where: { project_id: projectId, is_active: true },
+  });
+
+  const comments = await prisma.projectComment.findMany({
+    where: {
+      project_id: projectId,
+      is_active: true,
     },
     select: {
-      id: true,                 
-      comment: true,              
-      project: {
-        select: {
-          id: true,        
-          name: true,              
-        },
-      },
+      id: true,
+      comment: true,
+      created_at: true,
       employee: {
         select: {
           id: true,
@@ -452,11 +445,19 @@ export const getCommentList = async (projectId: number) => {
       },
     },
     orderBy: { created_at: "desc" },
+    skip: shouldPaginate ? (page! - 1) * limit! : undefined,
+    take: shouldPaginate ? limit! : undefined,
   });
+
+  return { comments, total };
 };
 
-export const getFilteredProjectsList = async (user: any, filters: any) => {
-  // Fetch user type from User table using employee_id
+export const getFilteredProjectsList = async (
+  user: any,
+  filters: ProjectFilter,
+) => {
+  const { page, limit, ...filterParams } = filters;
+  const shouldPaginate = page !== undefined && limit !== undefined;
   const userRecord = await prisma.user.findFirst({
     where: { employee_id: user.id },
     select: { type: true },
@@ -465,38 +466,9 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
   if (!userRecord) throw new Error("User not found");
   const userType = userRecord.type;
 
-  // Base where clause for active and non-deleted projects
-  let whereClause: any = {
-    is_active: true,
-    is_deleted: false,
-  };
-
-  // Apply date range filter on created_at
-  if (filters.startDate || filters.endDate) {
-    whereClause.created_at = {};
-    if (filters.startDate) {
-      whereClause.created_at.gte = new Date(filters.startDate);
-    }
-    if (filters.endDate) {
-      whereClause.created_at.lte = new Date(filters.endDate + "T23:59:59.999Z");
-    }
-  }
-
-  // Apply status filter
-  if (filters.statuses?.length) {
-    whereClause.status = { in: filters.statuses };
-  }
-
-  // Apply created_by filter
-  if (filters.createdByIds?.length) {
-    whereClause.created_by = { in: filters.createdByIds };
-  }
-
-  // Determine visible project IDs based on user role
   let visibleProjectIds: number[] = [];
 
   if (userType === "employee" || userType === "lead") {
-    // 1. Projects created by the current user
     const createdByMe = await prisma.project.findMany({
       where: {
         created_by: user.id,
@@ -507,7 +479,6 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
     });
     const createdByMeIds = createdByMe.map((p) => p.id);
 
-    // 2. Projects assigned directly to the current user
     const assignedToMe = await prisma.projectAssigner.findMany({
       where: {
         employee_id: user.id,
@@ -517,12 +488,9 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
     });
     const assignedToMeIds = assignedToMe.map((a) => a.project_id);
 
-    // Combine for employee (created + assigned)
     visibleProjectIds = [...new Set([...createdByMeIds, ...assignedToMeIds])];
 
-    // Extra logic for LEAD: include team members' projects
     if (userType === "lead") {
-      // Get all team members under this lead (including self)
       const teamMembers = await prisma.teamMember.findMany({
         where: {
           team: { team_lead_id: user.id },
@@ -536,7 +504,6 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
         user.id,
       ];
 
-      // 3. Projects created by team members
       const createdByTeam = await prisma.project.findMany({
         where: {
           created_by: { in: teamEmployeeIds },
@@ -547,7 +514,6 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
       });
       const createdByTeamIds = createdByTeam.map((p) => p.id);
 
-      // 4. Projects assigned to team members
       const assignedToTeam = await prisma.projectAssigner.findMany({
         where: {
           employee_id: { in: teamEmployeeIds },
@@ -558,7 +524,6 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
       });
       const assignedToTeamIds = assignedToTeam.map((a) => a.project_id);
 
-      // Combine everything for lead (unique IDs)
       visibleProjectIds = [
         ...new Set([
           ...createdByMeIds,
@@ -569,24 +534,38 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
       ];
     }
   }
-  // If employee/lead has no visible projects, return empty result
-  if (
-    (userType === "employee" || userType === "lead") &&
-    visibleProjectIds.length === 0
-  ) {
-    return { projects: [], total: 0 };
-  }
 
-  // Apply visible projects filter (only for employee/lead)
+  let whereClause: any = {
+    is_active: true,
+    is_deleted: false,
+  };
+
   if (visibleProjectIds.length > 0) {
     whereClause.id = { in: visibleProjectIds };
   }
+  if (filterParams.startDate || filterParams.endDate) {
+    whereClause.created_at = {
+      gte: filterParams.startDate
+        ? new Date(`${filterParams.startDate}T00:00:00.000Z`)
+        : undefined,
+      lte: filterParams.endDate
+        ? new Date(`${filterParams.endDate}T23:59:59.999Z`)
+        : undefined,
+    };
+  }
 
-  // Optional assignee filter
-  if (filters.assigneeIds?.length) {
+  if (filterParams.statuses?.length) {
+    whereClause.status = { in: filterParams.statuses };
+  }
+
+  if (filterParams.createdByIds?.length) {
+    whereClause.created_by = { in: filterParams.createdByIds };
+  }
+
+  if (filterParams.assigneeIds?.length) {
     const assigneeProjects = await prisma.projectAssigner.findMany({
       where: {
-        employee_id: { in: filters.assigneeIds },
+        employee_id: { in: filterParams.assigneeIds },
         status: AssignmentStatus.active,
       },
       select: { project_id: true },
@@ -601,21 +580,20 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
     } else {
       whereClause.id = { in: assigneeProjectIds };
     }
-
-    if (whereClause.id.in?.length === 0) {
-      return { projects: [], total: 0 };
-    }
   }
 
-  // Fetch projects with all necessary relations for counts
+  const total = await prisma.project.count({ where: whereClause });
+
   const projects = await prisma.project.findMany({
     where: whereClause,
+    skip: shouldPaginate ? (page! - 1) * limit! : undefined,
+    take: shouldPaginate ? limit! : undefined,
     select: {
       id: true,
       name: true,
       description: true,
       status: true,
-      // Creator info
+      created_at: true,
       creator: {
         select: {
           id: true,
@@ -623,17 +601,9 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
           profile_picture: true,
         },
       },
-      // Assignments (only needed fields)
       assignments: {
         where: { status: AssignmentStatus.active },
         select: {
-          assigner: {
-            select: {
-              id: true,
-              full_name: true,
-              profile_picture: true,
-            },
-          },
           employee: {
             select: {
               id: true,
@@ -643,129 +613,11 @@ export const getFilteredProjectsList = async (user: any, filters: any) => {
           },
         },
       },
-      // For counts
-      tasks: {
-        select: {
-          id: true,
-          status: { select: { name: true } },
-        },
-      },
-      tickets: {
-        select: { id: true, status: true },
-      },
-      comments: true, // Only for project comments count
     },
     orderBy: { created_at: "desc" },
   });
-  // Enrich each project with counts
-  const enrichedProjects = projects.map((project) => {
-    // Calculate task counts
-    let pendingTasks = 0;
-    let completedTasks = 0;
-    project.tasks.forEach((task) => {
-      const statusName = task.status?.name?.toLowerCase() || "";
-      if (statusName === "completed") completedTasks++;
-      else pendingTasks++;
-    });
 
-    // Calculate ticket counts
-    let pendingTickets = 0;
-    let completedTickets = 0;
-    project.tickets.forEach((ticket) => {
-      if (["resolved", "closed"].includes(ticket.status)) completedTickets++;
-      else pendingTickets++;
-    });
-
-    const projectCommentsCount = project.comments.length;
-
-    return {
-      ...project,
-      // Remove raw tasks/tickets to reduce response size
-      tasks: undefined,
-      tickets: undefined,
-      counts: {
-        tasks: {
-          total: pendingTasks + completedTasks,
-          pending: pendingTasks,
-          completed: completedTasks,
-        },
-        tickets: {
-          total: pendingTickets + completedTickets,
-          pending: pendingTickets,
-          completed: completedTickets,
-        },
-        comments: {
-          project: projectCommentsCount,
-          task: 0, // Will be updated in batch below
-          ticket: 0, // Will be updated in batch below
-          total: projectCommentsCount,
-        },
-      },
-    };
-  });
-
-  // Batch calculate task and ticket comments count for all projects
-  const projectIds = projects.map((p) => p.id);
-  if (projectIds.length > 0) {
-    // Task comments grouped by task_id
-    const taskCommentsByProject = await prisma.taskComment.groupBy({
-      by: ["task_id"],
-      where: { task: { project_id: { in: projectIds } } },
-      _count: { id: true },
-    });
-
-    const taskToProject = new Map<number, number>();
-    projects.forEach((p) => {
-      p.tasks.forEach((t) => taskToProject.set(t.id, p.id));
-    });
-
-    const taskCommentsMap = new Map<number, number>();
-    taskCommentsByProject.forEach((group) => {
-      const projId = taskToProject.get(group.task_id);
-      if (projId) {
-        taskCommentsMap.set(
-          projId,
-          (taskCommentsMap.get(projId) || 0) + group._count.id,
-        );
-      }
-    });
-
-    // Ticket comments grouped by ticket_id
-    const ticketCommentsByProject = await prisma.ticketComment.groupBy({
-      by: ["ticket_id"],
-      where: { ticket: { project_id: { in: projectIds } } },
-      _count: { id: true },
-    });
-
-    const ticketToProject = new Map<number, number>();
-    projects.forEach((p) => {
-      p.tickets.forEach((t) => ticketToProject.set(t.id, p.id));
-    });
-
-    const ticketCommentsMap = new Map<number, number>();
-    ticketCommentsByProject.forEach((group) => {
-      const projId = ticketToProject.get(group.ticket_id);
-      if (projId) {
-        ticketCommentsMap.set(
-          projId,
-          (ticketCommentsMap.get(projId) || 0) + group._count.id,
-        );
-      }
-    });
-
-    enrichedProjects.forEach((proj) => {
-      const projId = proj.id;
-      const taskCount = taskCommentsMap.get(projId) || 0;
-      const ticketCount = ticketCommentsMap.get(projId) || 0;
-
-      proj.counts.comments.task = taskCount;
-      proj.counts.comments.ticket = ticketCount;
-      proj.counts.comments.total =
-        proj.counts.comments.project + taskCount + ticketCount;
-    });
-  }
-
-  return { projects: enrichedProjects, total: enrichedProjects.length };
+  return { projects, total };
 };
 
 export const getAllProjects = async (
@@ -801,7 +653,6 @@ export const getAllProjects = async (
   let projectIds: number[] = [];
 
   if (userType === "employee") {
-    // Only projects where user is assigned
     const assignments = await prisma.projectAssigner.findMany({
       where: {
         employee_id: user.id,
@@ -813,7 +664,6 @@ export const getAllProjects = async (
     if (projectIds.length === 0) return [];
     whereClause.id = { in: projectIds };
   } else if (userType === "lead") {
-    // Projects where user is assigned or their team members are assigned
     const teamMembers = await prisma.teamMember.findMany({
       where: {
         team: {
@@ -825,7 +675,7 @@ export const getAllProjects = async (
       select: { employee_id: true },
     });
     const teamIds = teamMembers.map((m) => m.employee_id);
-    teamIds.push(user.id); // include self
+    teamIds.push(user.id);
 
     const assignments = await prisma.projectAssigner.findMany({
       where: {
@@ -839,8 +689,6 @@ export const getAllProjects = async (
     if (projectIds.length === 0) return [];
     whereClause.id = { in: projectIds };
   }
-  // For admin, hr, manager: no additional filter
-
   return prisma.project.findMany({
     where: whereClause,
     include: {
@@ -864,9 +712,7 @@ export const getAllProjects = async (
     orderBy: { created_at: "desc" },
   });
 };
-// ========================
-// ASSIGN / REMOVE MEMBER (incremental )
-// ========================
+
 export const updateProjectAssignees = async (
   projectId: number,
   addIds: number[] = [],
@@ -881,16 +727,12 @@ export const updateProjectAssignees = async (
       if (!project) throw new Error("Project not found");
 
       const logs: any[] = [];
-
-      // 1️⃣ ADD NEW ASSIGNEES ONLY (skip existing)
       if (addIds.length > 0) {
         const employees = await tx.employee.findMany({
           where: { id: { in: addIds }, is_active: true, is_deleted: false },
           select: { id: true, full_name: true },
         });
         const employeeMap = new Map(employees.map((e) => [e.id, e.full_name]));
-
-        // Check existing active assignments
         const existing = await tx.projectAssigner.findMany({
           where: {
             project_id: projectId,
@@ -927,8 +769,6 @@ export const updateProjectAssignees = async (
               performed_at: now,
             })),
           );
-
-          // Reassigned log if any new assignments
           logs.push({
             entity_type: EntityType.project,
             entity_id: projectId,
@@ -938,8 +778,6 @@ export const updateProjectAssignees = async (
           });
         }
       }
-
-      // 2️⃣ REVOKE (REMOVE) ASSIGNEES + LOG
       if (removeIds.length > 0) {
         const employees = await tx.employee.findMany({
           where: { id: { in: removeIds } },
@@ -973,8 +811,6 @@ export const updateProjectAssignees = async (
           })),
         );
       }
-
-      // 3️⃣ Save all logs
       if (logs.length > 0) {
         await tx.teamActivityLog.createMany({ data: logs });
       }
@@ -983,8 +819,6 @@ export const updateProjectAssignees = async (
     },
     { timeout: 25000 },
   );
-
-  // 4️⃣ Fetch full project details
   return prisma.project.findUniqueOrThrow({
     where: { id: projectId },
     include: {
@@ -1014,9 +848,6 @@ export const updateProjectAssignees = async (
   });
 };
 
-// ========================
-// ADD PROJECT STATUS
-// ========================
 export const addProjectStatus = async (
   projectId: number,
   name: string,
@@ -1055,8 +886,6 @@ export const addProjectStatus = async (
           is_active: true,
         },
       });
-
-      // Log creation
       await tx.teamActivityLog.create({
         data: {
           entity_type: EntityType.project,
@@ -1075,10 +904,6 @@ export const addProjectStatus = async (
     { timeout: 25000 },
   );
 };
-
-// ========================
-// REMOVE PROJECT STATUS (soft delete + log)
-// ========================
 export const removeProjectStatus = async (
   statusId: number,
   projectId: number,
@@ -1129,9 +954,6 @@ export const removeProjectStatus = async (
   );
 };
 
-// ========================
-// CREATE PROJECT
-// ========================
 export const getProjectEmployees = async (user: any) => {
   const userRecord = await prisma.user.findFirst({
     where: { employee_id: user.id },
@@ -1146,7 +968,6 @@ export const getProjectEmployees = async (user: any) => {
   let employeeIds: number[] = [];
 
   if (userType === "employee") {
-    // Members of their own teams, including self
     const teams = await prisma.teamMember.findMany({
       where: { employee_id: user.id, is_active: true, is_deleted: false },
       select: { team_id: true },
@@ -1154,14 +975,13 @@ export const getProjectEmployees = async (user: any) => {
     const teamIds = teams.map((t) => t.team_id);
 
     if (teamIds.length === 0) {
-      // If no team, just self
       employeeIds = [user.id];
     } else {
       const members = await prisma.teamMember.findMany({
         where: { team_id: { in: teamIds }, is_active: true, is_deleted: false },
         select: { employee_id: true },
       });
-      employeeIds = [...new Set(members.map((m) => m.employee_id))]; // unique
+      employeeIds = [...new Set(members.map((m) => m.employee_id))];
     }
   } else if (userType === "lead") {
     // Their team members
@@ -1174,9 +994,7 @@ export const getProjectEmployees = async (user: any) => {
       select: { employee_id: true },
     });
     employeeIds = myTeamMembers.map((m) => m.employee_id);
-    employeeIds.push(user.id); // include self if needed
-
-    // Leads of other teams
+    employeeIds.push(user.id);
     const otherLeads = await prisma.team.findMany({
       where: {
         team_lead_id: { not: user.id },
@@ -1190,7 +1008,6 @@ export const getProjectEmployees = async (user: any) => {
       .filter((id) => id !== null) as number[];
     employeeIds = [...new Set([...employeeIds, ...otherLeadIds])];
   } else {
-    // admin, hr, manager: all
     const all = await prisma.employee.findMany({
       where: { is_active: true, is_deleted: false },
       select: { id: true },
@@ -1211,6 +1028,121 @@ export const getProjectEmployees = async (user: any) => {
   });
 };
 
-// ========================
-// CREATE PROJECT
-// ========================
+export const getProjectHistoryLogs = async (
+  projectId: number,
+  filters: ProjectLogFilter,
+  currentUser: any,
+) => {
+  const { page, limit, ...logFilters } = filters;
+  const shouldPaginate = page !== undefined && limit !== undefined;
+
+  // Permission check
+  const userRecord = await prisma.user.findFirst({
+    where: { employee_id: currentUser.id },
+    select: { type: true },
+  });
+
+  if (!userRecord) throw new Error("User not found");
+  const userType = userRecord.type;
+
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { id: true, created_by: true },
+  });
+  if (!project) throw new Error("Project not found");
+
+  let canAccess = false;
+  if (["admin", "hr", "manager"].includes(userType)) {
+    canAccess = true;
+  } else if (["lead", "employee"].includes(userType)) {
+    if (project.created_by === currentUser.id) canAccess = true;
+    else {
+      const assignment = await prisma.projectAssigner.findFirst({
+        where: {
+          project_id: projectId,
+          employee_id: currentUser.id,
+          status: AssignmentStatus.active,
+        },
+      });
+      if (assignment) canAccess = true;
+
+      if (userType === "lead" && !canAccess) {
+        const teamMembers = await prisma.teamMember.findMany({
+          where: {
+            team: { team_lead_id: currentUser.id },
+            is_active: true,
+            is_deleted: false,
+          },
+          select: { employee_id: true },
+        });
+        const teamIds = teamMembers.map((m) => m.employee_id);
+
+        const teamAssignment = await prisma.projectAssigner.findFirst({
+          where: {
+            project_id: projectId,
+            employee_id: { in: teamIds },
+            status: AssignmentStatus.active,
+          },
+        });
+        if (teamAssignment) canAccess = true;
+      }
+    }
+  }
+
+  if (!canAccess) throw new Error("Unauthorized to view project logs");
+
+  let where: any = {
+    entity_type: EntityType.project,
+    entity_id: projectId,
+  };
+  if (logFilters.startDate || logFilters.endDate) {
+    where.performed_at = {
+      gte: logFilters.startDate
+        ? new Date(`${logFilters.startDate}T00:00:00.000Z`)
+        : undefined,
+      lte: logFilters.endDate
+        ? new Date(`${logFilters.endDate}T23:59:59.999Z`)
+        : undefined,
+    };
+  }
+
+  if (logFilters.actions?.length) where.action = { in: logFilters.actions };
+  if (logFilters.performedByIds?.length)
+    where.performed_by = { in: logFilters.performedByIds };
+
+  const total = await prisma.teamActivityLog.count({ where });
+
+  const logs = await prisma.teamActivityLog.findMany({
+    where,
+    select: {
+      id: true,
+      action: true,
+      field_name: true,
+      old_value: true,
+      new_value: true,
+      performed_at: true,
+      ip_address: true,
+      device_info: true,
+      extra_payload: true,
+      actor: {
+        select: {
+          id: true,
+          full_name: true,
+          profile_picture: true,
+        },
+      },
+      targetUser: {
+        select: {
+          id: true,
+          full_name: true,
+          profile_picture: true,
+        },
+      },
+    },
+    orderBy: { id: "desc" },
+    skip: shouldPaginate ? (page! - 1) * limit! : undefined,
+    take: shouldPaginate ? limit! : undefined,
+  });
+
+  return { logs, total };
+};

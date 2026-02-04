@@ -10,6 +10,7 @@ import {
   removeProjectStatusHandler,
   updateProjectAssigneesHandler,
   updateProjectHandler,
+  getProjectHistoryLogsHandler,
 } from "../controllers/projectController";
 import { authenticate } from "../middlewares/authMiddleware";
 
@@ -29,5 +30,6 @@ router.delete(
   authenticate,
   removeProjectStatusHandler,
 );
+router.post("/:projectId/logs", authenticate, getProjectHistoryLogsHandler);
 
 export default router;
