@@ -129,7 +129,7 @@ export const createNotification = async (data: CreateNotification) => {
         const username = user.employee?.full_name ?? user.username ?? "User";
         return sendEmail({
           to: user.email,
-          cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
+          // cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
           subject: `${title} - Orio Connect`,
           html: getNotificationTemplate(
             username,
@@ -184,7 +184,7 @@ export const createNotification = async (data: CreateNotification) => {
   
   await sendEmail({
     to: users.map((u) => u.email),
-    cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
+    // cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
     subject: `${title} - Orio Connect`,
     html: getNotificationTemplate(
       "Orio Team",
@@ -223,7 +223,7 @@ export const createCombinedNotification = async (data: CreateNotification) => {
 
   await sendEmail({
     to: allEmails,
-    cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
+    // cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
     subject: `${title} - Orio Connect`,
     html: getNotificationTemplate(
       "Orio Team",

@@ -14,7 +14,11 @@ export async function notifyMeetingReminders() {
   try {
     const meetings = await prisma.$queryRaw<MeetingAttendeeNotification[]>`
       SELECT 
-        GROUP_CONCAT(DISTINCT u.id) AS user_ids,
+        	CONCAT(
+                  GROUP_CONCAT(DISTINCT u.id ORDER BY u.id),
+                  ',',
+                  m.host_id
+                ) AS user_ids,
         CONCAT('Reminder: ', UPPER(LEFT(m.recurrence_type, 1)), LOWER(SUBSTRING(m.recurrence_type, 2)), ' Meeting Tomorrow - ', m.title) AS title,
            CONCAT(
           'Reminder: You have a ', UPPER(LEFT(m.recurrence_type, 1)), LOWER(SUBSTRING(m.recurrence_type, 2)), ' meeting tomorrow: ', m.title,
