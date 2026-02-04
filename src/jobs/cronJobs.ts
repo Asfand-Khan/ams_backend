@@ -85,10 +85,10 @@ async function birthdayHandler() {
 // }
 
 export default function initializeCronJobs() {
-  if (process.env.NODE_ENV !== "production") {
-    console.log("🚫 Cron jobs are disabled in non-production environment.");
-    return;
-  }
+  // if (process.env.NODE_ENV !== "production") {
+  //   console.log("🚫 Cron jobs are disabled in non-production environment.");
+  //   return;
+  // }
   try {
     // Check In Crons
     const notifyCheckInSchedule09AM = cron.schedule(

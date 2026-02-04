@@ -241,7 +241,7 @@ export const createCombinedNotification = async (data: CreateNotification) => {
     where: { user_id: { in: userIds }, is_active: true },
   });
 
-  // await sendPushNotification(tokens.map((t) => t.token), title, message);
+  await sendPushNotification(tokens.map((t) => t.token), title, message);
 
   return;
 };
