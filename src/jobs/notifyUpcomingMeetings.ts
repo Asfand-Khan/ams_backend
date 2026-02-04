@@ -13,7 +13,7 @@ export async function notifyUpcomingMeetings() {
 
   try {
     const nowPk = new Date(
-      new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" })
+      new Date().toLocaleString("en-US", { timeZone: "Asia/Karachi" }),
     );
     const currentHour = nowPk.toTimeString().slice(0, 8);
     const nextHour = new Date(nowPk.getTime() + 60 * 60 * 1000)
@@ -21,7 +21,11 @@ export async function notifyUpcomingMeetings() {
       .slice(0, 8);
     const meetings = await prisma.$queryRaw<MeetingAttendeeNotification[]>`
       SELECT 
-        GROUP_CONCAT(DISTINCT u.id) AS user_ids,
+        	CONCAT(
+                  GROUP_CONCAT(DISTINCT u.id ORDER BY u.id),
+                  ',',
+                  m.host_id
+                ) AS user_ids,
         CONCAT('Upcoming: ', UPPER(LEFT(m.recurrence_type,1)), LOWER(SUBSTRING(m.recurrence_type,2)), ' Meeting - ', m.title) AS title,
         CONCAT(
           'Your ', UPPER(LEFT(m.recurrence_type,1)), LOWER(SUBSTRING(m.recurrence_type,2)), ' meeting: ', m.title,
@@ -64,7 +68,7 @@ export async function notifyUpcomingMeetings() {
       console.log(
         `✅ Upcoming meeting reminder sent for meeting "${
           meeting.title
-        }" to users: ${userIds.join(", ")}`
+        }" to users: ${userIds.join(", ")}`,
       );
     }
 

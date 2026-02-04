@@ -27,7 +27,7 @@ export default async function sendDetails() {
       try {
         await sendEmail({
           to: employee.email,
-          subject: "Orio Connect - Login Details",
+          subject: "Login Details - Orio Connect",
           html: getLoginDetailsTemplate(
             employee.username,
             employee.password,

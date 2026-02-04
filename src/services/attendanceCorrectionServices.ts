@@ -351,7 +351,7 @@ export const attendanceCorrectionRejectApprove = async (
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
-      subject: `Orio Connect - Attendance Correction ${capitalizedStatus}`,
+      subject: `Attendance Correction ${capitalizedStatus} - Orio Connect`,
       cc: [emp.hr_email, emp.team_lead_email],
       html: getAttendanceCorrectionRequestTemplate({
         attendance_date: updatedCorrection.attendance_date,

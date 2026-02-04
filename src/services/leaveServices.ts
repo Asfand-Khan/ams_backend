@@ -83,7 +83,7 @@ export const createLeave = async (data: Leave, days: number) => {
     for (const emp of employee) {
       await sendEmail({
         to: emp.employee_email,
-        subject: `Orio Connect - Leave Request ${capitalizedStatus}`,
+        subject: `Leave Request ${capitalizedStatus} - Orio Connect`,
         cc: [emp.hr_email, emp.team_lead_email],
         html: getLeaveTemplate({
           status: leave.status,
@@ -404,7 +404,7 @@ export const leaveRejectApprove = async (
   for (const emp of employee) {
     await sendEmail({
       to: emp.employee_email,
-      subject: `Orio Connect - Leave Request ${capitalizedStatus}`,
+      subject: `Leave Request ${capitalizedStatus} - Orio Connect`,
       cc: [emp.hr_email, emp.team_lead_email],
       html: getLeaveTemplate({
         status: updatedLeave.status,

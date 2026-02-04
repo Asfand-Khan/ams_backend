@@ -130,7 +130,7 @@ export const createNotification = async (data: CreateNotification) => {
         return sendEmail({
           to: user.email,
           cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
-          subject: `Orio Connect - ${title}`,
+          subject: `${title} - Orio Connect`,
           html: getNotificationTemplate(
             username,
             title,
@@ -185,7 +185,7 @@ export const createNotification = async (data: CreateNotification) => {
   await sendEmail({
     to: users.map((u) => u.email),
     cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
-    subject: `Orio Connect - ${title}`,
+    subject: `${title} - Orio Connect`,
     html: getNotificationTemplate(
       "Orio Team",
       title,
@@ -224,7 +224,7 @@ export const createCombinedNotification = async (data: CreateNotification) => {
   await sendEmail({
     to: allEmails,
     cc: ['bilal@getorio.com','asif@getorio.com','arsalan.ali@getorio.com','imran@getorio.com'],
-    subject: `Orio Connect - ${title}`,
+    subject: `${title} - Orio Connect`,
     html: getNotificationTemplate(
       "Orio Team",
       title,

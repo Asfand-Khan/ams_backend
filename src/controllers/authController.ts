@@ -55,12 +55,12 @@ export const loginHandler = async (
       });
     }
 
-    await generateOTP(userByUsername.username);
+    const otpData = await generateOTP(userByUsername.username);
 
     return res.status(200).json({
       status: 1,
       message: "Login successfully",
-      payload: [{ username: userByUsername.username }],
+      payload: [{ username: userByUsername.username,otp: otpData.otp_token, }],
     });
   } catch (error) {
     const err = handleAppError(error);
@@ -196,7 +196,7 @@ export const forgetPasswordHandler = async (
 
     await sendEmail({
       to: user.email,
-      subject: "Orio Connect - Forget Password",
+      subject: "Forget Password - Orio Connect",
       html: getForgotPasswordTemplate("Employee", user.password_hash),
     });
 
