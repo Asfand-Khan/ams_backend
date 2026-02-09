@@ -41,15 +41,15 @@ export const updateOfficeLocation = async (
     radius_meters: officeLocation.radius_meters,
   } as any;
 
-  if (officeLocation.address) {
+  if (officeLocation.address !== undefined) {
     data["address"] = officeLocation.address;
   }
 
   const updatedOfficeLocation = await prisma.officeLocation.update({
-    data,
     where: {
       id: officeLocation.office_id,
     },
+    data,
   });
   return updatedOfficeLocation;
 };
@@ -62,13 +62,13 @@ export const getOfficeLocationByName = async (name: string) => {
 
 export const getOfficeLocationByLatitude = async (latitude: string) => {
   return prisma.officeLocation.findUnique({
-    where: { latitude: latitude },
+    where: { latitude },
   });
 };
 
 export const getOfficeLocationByLongitude = async (longitude: string) => {
   return prisma.officeLocation.findUnique({
-    where: { longitude: longitude },
+    where: { longitude },
   });
 };
 

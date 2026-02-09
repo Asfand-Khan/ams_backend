@@ -515,7 +515,7 @@ model TeamMember {
 
 model Holiday {
   id           Int      @id @default(autoincrement())
-  holiday_date String?
+  holiday_date DateTime @default(now())
   start_date   String
   end_date     String
   title        String   @db.VarChar(100)

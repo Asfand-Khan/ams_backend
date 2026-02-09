@@ -16,7 +16,7 @@ import {
 
 export const updateMeetingInstance = async (
   id: number,
-  data: UpdateMeetingInstance
+  data: UpdateMeetingInstance,
 ) => {
   const existingInstance = await prisma.meetingInstance.findUnique({
     where: { id: id },
@@ -48,16 +48,16 @@ export const updateMeetingInstance = async (
       });
 
       const existingAttendeeIds = existingAttendees.map((att) =>
-        Number(att.employee_id)
+        Number(att.employee_id),
       );
       const newAttendeeIds = data.attendees;
 
       const toRemove = existingAttendeeIds.filter(
-        (id) => !newAttendeeIds.includes(id)
+        (id) => !newAttendeeIds.includes(id),
       );
 
       const toAdd = newAttendeeIds.filter(
-        (id) => !existingAttendeeIds.includes(id)
+        (id) => !existingAttendeeIds.includes(id),
       );
 
       if (toRemove.length > 0) {
@@ -92,6 +92,56 @@ export const updateMeetingInstance = async (
   return updatedInstance;
 };
 
+// export const getMeetingById = async (id: number) => {
+//   const meeting = await prisma.meeting.findUnique({
+//     where: {
+//       id,
+//       is_deleted: false,
+//     },
+//     include: {
+//       meeting_host: {
+//         select: {
+//           id: true,
+//           full_name: true,
+//           email: true,
+//         },
+//       },
+//       attendees: {
+//         where: {
+//           is_active: true,
+//           is_deleted: false,
+//         },
+//         include: {
+//           employee: {
+//             select: {
+//               id: true,
+//               full_name: true,
+//               email: true,
+//             },
+//           },
+//         },
+//       },
+//     },
+//   });
+
+//   if (!meeting) {
+//     throw new Error("Meeting not found");
+//   }
+
+//   return {
+//     ...meeting,
+//     id: Number(meeting.id),
+//     host_id: Number(meeting.host_id),
+//     created_at: meeting.created_at.toISOString(),
+//     updated_at: meeting.updated_at.toISOString(),
+//     attendees: meeting.attendees.map((att) => ({
+//       id: Number(att.id),
+//       employee_id: Number(att.employee_id),
+//       full_name: att.employee.full_name,
+//       email: att.employee.email,
+//     })),
+//   };
+// };
 export const getMeetingById = async (id: number) => {
   const meeting = await prisma.meeting.findUnique({
     where: {
@@ -127,22 +177,103 @@ export const getMeetingById = async (id: number) => {
   if (!meeting) {
     throw new Error("Meeting not found");
   }
+  const instances = await prisma.meetingInstance.findMany({
+    where: {
+      meeting_id: id,
+      is_deleted: false,
+    },
+    orderBy: {
+      instance_date: "desc",
+    },
+    select: {
+      id: true,
+      instance_date: true,
+      start_time: true,
+      end_time: true,
+      status: true,
+      is_active: true,
+    },
+  });
 
+  const formattedInstances = await Promise.all(
+    instances.map(async (instance) => {
+      const attendees = await prisma.meetingAttendee.findMany({
+        where: {
+          meeting_instance_id: instance.id,
+          is_active: true,
+          is_deleted: false,
+        },
+        include: {
+          employee: {
+            select: {
+              id: true,
+              full_name: true,
+              email: true,
+            },
+          },
+        },
+      });
+      return {
+        meeting_instance_id: Number(instance.id),
+        instance_date: instance.instance_date, // YYYY-MM-DD
+        start_time: instance.start_time,
+        end_time: instance.end_time,
+        status: instance.status,
+        is_active: instance.is_active,
+        attendees: attendees.map((att) => ({
+          employee_id: Number(att.employee_id),
+          full_name: att.employee.full_name,
+          email: att.employee.email,
+          attended: att.attended ?? false,
+        })),
+      };
+    }),
+  );
   return {
-    ...meeting,
     id: Number(meeting.id),
+    title: meeting.title,
+    recurrence_rule: meeting.recurrence_rule,
+    recurrence_type: meeting.recurrence_type,
+    start_time: meeting.start_time,
+    end_time: meeting.end_time,
+    recurrence_start_date: meeting.recurrence_start_date
+      ? meeting.recurrence_start_date
+      : null,
+    recurrence_end_date: meeting.recurrence_end_date
+      ? meeting.recurrence_end_date
+      : null,
     host_id: Number(meeting.host_id),
+    location_type: meeting.location_type,
+    location_details: meeting.location_details,
+    agenda: meeting.agenda,
+    status: meeting.status,
+    is_active: meeting.is_active,
+    is_deleted: meeting.is_deleted,
     created_at: meeting.created_at.toISOString(),
     updated_at: meeting.updated_at.toISOString(),
-    attendees: meeting.attendees.map((att) => ({
-      id: Number(att.id),
-      employee_id: Number(att.employee_id),
-      full_name: att.employee.full_name,
-      email: att.employee.email,
-    })),
+    host: meeting.meeting_host
+      ? {
+          id: Number(meeting.meeting_host.id),
+          full_name: meeting.meeting_host.full_name,
+          email: meeting.meeting_host.email,
+        }
+      : null,
+   attendees: Array.from(
+  new Map(
+    meeting.attendees.map(att => [
+      Number(att.employee_id), // use employee_id as unique key
+      {
+        id: Number(att.id),
+        employee_id: Number(att.employee_id),
+        full_name: att.employee.full_name,
+        email: att.employee.email,
+      }
+    ])
+  ).values()
+),
+    instances: formattedInstances,
   };
 };
-
 export const updateMeeting = async (id: number, data: UpdateMeeting) => {
   const existingMeeting = await prisma.meeting.findUnique({
     where: { id, is_deleted: false },
@@ -170,18 +301,18 @@ export const updateMeeting = async (id: number, data: UpdateMeeting) => {
       });
 
       const existingAttendeeIds = existingAttendees.map((att) =>
-        Number(att.employee_id)
+        Number(att.employee_id),
       );
       const newAttendeeIds = data.attendees;
 
       // Identify attendees to remove
       const toRemove = existingAttendeeIds.filter(
-        (id) => !newAttendeeIds.includes(id)
+        (id) => !newAttendeeIds.includes(id),
       );
 
       // Identify attendees to add
       const toAdd = newAttendeeIds.filter(
-        (id) => !existingAttendeeIds.includes(id)
+        (id) => !existingAttendeeIds.includes(id),
       );
 
       // Remove attendees
@@ -239,7 +370,7 @@ export const updateMeeting = async (id: number, data: UpdateMeeting) => {
               meeting_id: id,
               meeting_instance_id: instId,
               employee_id: empId,
-            }))
+            })),
           );
 
           await tx.meetingAttendee.createMany({
@@ -455,7 +586,7 @@ export const createMeeting = async (data: Meeting) => {
       data.recurrence_start_date,
       data.recurrence_end_date,
       data.start_time,
-      data.end_time
+      data.end_time,
     );
 
     await tx.meetingInstance.createMany({
@@ -478,7 +609,7 @@ export const createMeeting = async (data: Meeting) => {
           meeting_id: newMeeting.id,
           meeting_instance_id: inst.id,
           employee_id: attId,
-        }))
+        })),
       );
 
       await tx.meetingAttendee.createMany({
@@ -592,7 +723,7 @@ export const attendMeeting = async (data: AttendMeeting) => {
 
 export const meetingMinute = async (
   data: MeetingMinute,
-  created_by: number
+  created_by: number,
 ) => {
   const meeting = await prisma.meetingInstance.findUnique({
     where: {
@@ -708,7 +839,7 @@ export const meetingMinute = async (
           ${attendee.status === "1" ? "Attended" : "Not Attended"}
         </td>
       </tr>
-    `
+    `,
       )
       .join("");
 
@@ -795,7 +926,7 @@ export const meetingList = async (data: MeetingList) => {
 };
 
 export const toggleMeetingInstanceStatus = async (
-  data: MeetingInstanceStatus
+  data: MeetingInstanceStatus,
 ) => {
   const instance = await prisma.meetingInstance.findUnique({
     where: { id: data.meeting_instance_id },
@@ -815,3 +946,39 @@ export const toggleMeetingInstanceStatus = async (
 };
 const safeHtml = (content: string | undefined): string =>
   content ? content.replace(/</g, "&lt;").replace(/>/g, "&gt;") : "";
+
+export const getMeetingInstanceById = async (instanceId: number) => {
+  const instance = await prisma.meetingInstance.findUnique({
+    where: { id: instanceId },
+    include: {
+      meeting: {
+        select: {
+          id: true,
+          title: true,
+          agenda: true,
+          location_type: true,
+          location_details: true,
+          host_id: true,
+          recurrence_type: true,
+          recurrence_rule: true,
+        },
+      },
+      attendees: {
+        where: { is_active: true, is_deleted: false },
+        include: {
+          employee: {
+            select: { id: true, full_name: true, email: true },
+          },
+        },
+      },
+      minutes: {
+        select: { minutes: true, created_at: true, created_by: true },
+      },
+    },
+  });
+
+  if (!instance) throw new Error("Meeting instance not found");
+  return {
+    ...instance,
+  };
+};

@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import prisma from "../config/db";
 import { Holiday, HolidayUpdate } from "../validations/holidayValidations";
-import { createCombinedNotification } from "./notificationServices";
+import {createNotification } from "./notificationServices";
 
 export const getAllHolidays = async () => {
   const holidays = await prisma.holiday.findMany({
@@ -103,7 +103,7 @@ export const createHoliday = async (holiday: Holiday) => {
     if (employees.length > 0) {
       const userIds = employees.map((e) => e.id);
 
-      await createCombinedNotification({
+      await createNotification({
         user_id: userIds,
         title: holiday.notification_title || "New Holiday Announced!",
         message:

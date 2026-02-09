@@ -19,7 +19,7 @@ import { z } from "zod";
 // Description --> Fetch all menus
 export const getAllMenusHandler = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<any> => {
   try {
     const menus = await allMenus();
@@ -63,7 +63,7 @@ const menuSortingSchema = z.array(
   z.object({
     id: z.number().int(),
     sorting: z.number().int(),
-  })
+  }),
 );
 
 // ────────────────────────────────────────────────
@@ -73,7 +73,9 @@ export const getSingleMenuHandler = async (req: Request, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id) || id <= 0) {
-      return res.status(400).json({ status: 0, message: "Invalid menu ID", payload: null });
+      return res
+        .status(400)
+        .json({ status: 0, message: "Invalid menu ID", payload: null });
     }
 
     const menu = await getSingleMenu(id);
@@ -101,7 +103,9 @@ export const createMenuHandler = async (req: AuthRequest, res: Response) => {
     const parsed = menuCreateSchema.parse(req.body);
 
     if (!req.userRecord?.id) {
-      return res.status(401).json({ status: 0, message: "Unauthorized", payload: null });
+      return res
+        .status(401)
+        .json({ status: 0, message: "Unauthorized", payload: null });
     }
 
     const newMenu = await createMenuItem(parsed, req.userRecord.id);
@@ -128,13 +132,17 @@ export const updateMenuHandler = async (req: AuthRequest, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (isNaN(id) || id <= 0) {
-      return res.status(400).json({ status: 0, message: "Invalid menu ID", payload: null });
+      return res
+        .status(400)
+        .json({ status: 0, message: "Invalid menu ID", payload: null });
     }
 
     const parsed = menuUpdateSchema.parse(req.body);
 
     if (!req.userRecord?.id) {
-      return res.status(401).json({ status: 0, message: "Unauthorized", payload: null });
+      return res
+        .status(401)
+        .json({ status: 0, message: "Unauthorized", payload: null });
     }
 
     const updated = await updateMenuItem(id, parsed, req.userRecord.id);
@@ -158,12 +166,17 @@ export const updateMenuHandler = async (req: AuthRequest, res: Response) => {
 // PATCH /api/v1/menus/sort
 // Body: [ { "id": 5, "sorting": 1 }, { "id": 3, "sorting": 2 }, ... ]
 // ────────────────────────────────────────────────
-export const updateMenuSortingHandler = async (req: AuthRequest, res: Response) => {
+export const updateMenuSortingHandler = async (
+  req: AuthRequest,
+  res: Response,
+) => {
   try {
     const items = menuSortingSchema.parse(req.body);
 
     if (!req.userRecord?.id) {
-      return res.status(401).json({ status: 0, message: "Unauthorized", payload: null });
+      return res
+        .status(401)
+        .json({ status: 0, message: "Unauthorized", payload: null });
     }
 
     const result = await updateMenuSorting(items, req.userRecord.id);

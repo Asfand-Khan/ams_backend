@@ -24,6 +24,7 @@ import {
   updateProject,
   updateProjectAssignees,
 } from "../services/projectServices";
+import { formatProfessionalTimelineEntry } from "../utils/teamActivityLogsHelper";
 
 // Module --> Project
 // Method --> POST (Protected)
@@ -190,7 +191,7 @@ export const projectsListHandler = async (req: AuthRequest, res: Response) => {
       message: projects.length
         ? "Projects fetched successfully"
         : "No projects found",
-      data: projects,
+      payload: projects,
       ...(shouldPaginate && {
         pagination: {
           total,
@@ -207,7 +208,7 @@ export const projectsListHandler = async (req: AuthRequest, res: Response) => {
     return res.status(err.status || 400).json({
       status: 0,
       message: err.message,
-      data: [],
+      payload: [],
     });
   }
 };
@@ -231,13 +232,13 @@ export const getAllProjectsHandler = async (
     return res.status(200).json({
       status: 1,
       message: "Projects listed successfully",
-      data: projects,
+      payload: projects,
     });
   } catch (error) {
     const err = handleAppError(error);
     return res
       .status(err.status || 400)
-      .json({ status: 0, message: err.message, data: [] });
+      .json({ status: 0, message: err.message, payload: [] });
   }
 };
 
@@ -255,15 +256,22 @@ export const getCommentListHandler = async (
       return res.status(400).json({
         status: 0,
         message: "Invalid project ID",
-        data: [],
+        payload: [],
       });
     }
-    const page = typeof req.body.page === "number" && Number.isInteger(req.body.page) && req.body.page > 0
-      ? req.body.page
-      : undefined;
-    const limit = typeof req.body.limit === "number" && Number.isInteger(req.body.limit) && req.body.limit > 0 && req.body.limit <= 100
-      ? req.body.limit
-      : undefined;
+    const page =
+      typeof req.body.page === "number" &&
+      Number.isInteger(req.body.page) &&
+      req.body.page > 0
+        ? req.body.page
+        : undefined;
+    const limit =
+      typeof req.body.limit === "number" &&
+      Number.isInteger(req.body.limit) &&
+      req.body.limit > 0 &&
+      req.body.limit <= 100
+        ? req.body.limit
+        : undefined;
     const shouldPaginate = page !== undefined && limit !== undefined;
     projectFilterSchema.parse(req.body);
     const { comments, total } = await getCommentList(projectId, {
@@ -275,16 +283,16 @@ export const getCommentListHandler = async (
       message: comments.length
         ? "Comments listed successfully"
         : "No comments found",
-      data: comments,
+      payload: comments,
     };
     if (shouldPaginate) {
       response.pagination = {
-        total,                        
+        total,
         page,
-        limit,                           
+        limit,
         totalPages: Math.ceil(total / limit),
-        hasNext: page * limit < total,    
-        hasPrev: page > 1,         
+        hasNext: page * limit < total,
+        hasPrev: page > 1,
       };
     }
 
@@ -294,7 +302,7 @@ export const getCommentListHandler = async (
     return res.status(err.status || 400).json({
       status: 0,
       message: err.message,
-      data: [],
+      payload: [],
     });
   }
 };
@@ -410,45 +418,47 @@ export const getProjectEmployeesHandler = async (
     return res.status(200).json({
       status: 1,
       message: "Project employees listed successfully",
-      data: employees,
+      payload: employees,
     });
   } catch (error) {
     const err = handleAppError(error);
     return res
       .status(err.status || 400)
-      .json({ status: 0, message: err.message, data: [] });
+      .json({ status: 0, message: err.message, payload: [] });
   }
 };
 
-// ── Get Project History Logs ─────────────────────────────────────────
-export const getProjectHistoryLogsHandler = async (
-  req: AuthRequest,
-  res: Response,
-) => {
+export const getProjectHistoryLogsHandler = async (req: AuthRequest, res: Response) => {
   try {
     const projectId = Number(req.params.projectId);
-    if (isNaN(projectId))
-      return res
-        .status(400)
-        .json({ status: 0, message: "Invalid project ID", data: [] });
+
+    if (isNaN(projectId) || projectId <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid project identifier",
+        payload: null,
+      });
+    }
 
     const filters = projectLogFilterSchema.parse(req.body);
-    const shouldPaginate =
-      filters.page !== undefined && filters.limit !== undefined;
 
     const { logs, total } = await getProjectHistoryLogs(
       projectId,
       filters,
-      req.userRecord,
+      req.userRecord!,
     );
 
+    const timeline = logs.map(formatProfessionalTimelineEntry);
+
+    const isPaginated = filters.page !== undefined && filters.limit !== undefined;
+
     return res.status(200).json({
-      status: 1,
-      message: logs.length
-        ? "Project history logs fetched successfully"
-        : "No logs found",
-      data: logs,
-      ...(shouldPaginate && {
+      success: true,
+      message: timeline.length
+        ? "Project activity timeline retrieved successfully"
+        : "No activity records found for this project",
+      payload: timeline,
+      ...(isPaginated && {
         pagination: {
           total,
           page: filters.page!,
@@ -462,9 +472,9 @@ export const getProjectHistoryLogsHandler = async (
   } catch (error) {
     const err = handleAppError(error);
     return res.status(err.status || 400).json({
-      status: 0,
-      message: err.message,
-      data: [],
+      success: false,
+      message: err.message || "Failed to retrieve project activity timeline",
+      payload: null,
     });
   }
 };

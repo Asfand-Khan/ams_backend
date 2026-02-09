@@ -4,6 +4,7 @@ import {
   createMeetingHandler,
   dashboardMeetingListHandler,
   getMeetingByIdHandler,
+  getMeetingInstanceByIdHandler,
   meetingInstanceListHandler,
   meetingInstanceStatusHandler,
   meetingListHandler,
@@ -29,5 +30,5 @@ router.post("/instances/status", meetingInstanceStatusHandler);
 // Dynamic routes last
 router.get("/:id", authenticate, getMeetingByIdHandler);
 router.put("/:id", authenticate, updateMeetingHandler);
-
+router.get("/instances/:instanceId", authenticate, getMeetingInstanceByIdHandler);
 export default router;

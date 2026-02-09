@@ -15,6 +15,7 @@ import {
   createMeeting,
   dashboardMeetingList,
   getMeetingById,
+  getMeetingInstanceById,
   meetingInstanceListById,
   meetingList,
   meetingMinute,
@@ -320,6 +321,26 @@ export const meetingInstanceStatusHandler = async (
       status: 1,
       message: "Updated Meeting Instance successfully",
       payload: [updatedInstance],
+    });
+  } catch (error) {
+    const err = handleAppError(error);
+    return res.status(err.status).json({
+      status: 0,
+      message: err.message,
+      payload: [],
+    });
+  }
+};
+// In controller file
+export const getMeetingInstanceByIdHandler = async (req: Request, res: Response) => {
+  try {
+    const { instanceId } = req.params;
+    const instance = await getMeetingInstanceById(Number(instanceId));
+
+    return res.status(200).json({
+      status: 1,
+      message: "Meeting instance fetched successfully",
+      payload: [instance],
     });
   } catch (error) {
     const err = handleAppError(error);

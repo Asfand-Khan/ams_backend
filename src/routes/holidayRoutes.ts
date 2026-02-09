@@ -10,7 +10,7 @@ const router = Router();
 
 router.get("/", getAllHolidaysHandler);
 router.post("/", createHolidayHandler);
-router.post("/single", getHolidayByIdHandler);
+router.get("/:id", getHolidayByIdHandler);
 router.put("/:id", updateHolidayHandler);
 
 export default router

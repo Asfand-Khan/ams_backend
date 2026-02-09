@@ -48,7 +48,7 @@ export const officeLocationSchema = z.object({
     .nullable(),
 });
 
-const officeLocationUpdateSchema = officeLocationSchema.extend({
+export const officeLocationUpdateSchema = officeLocationSchema.extend({
   office_id: z
     .number({
       required_error: "Office ID is required.",
